@@ -27,7 +27,7 @@ import {
 import { toast } from 'sonner';
 import { extractVideoMeta } from '@/lib/videoFrame';
 import type { VideoProject, Material } from '@/types/types';
-import { cn } from '@/lib/utils';
+import { cn, makeWorkTitle } from '@/lib/utils';
 import CoverCandidates from '@/components/CoverCandidates';
 
 // ── 状态配置 ──────────────────────────────────────────────────────────────
@@ -85,10 +85,17 @@ function WorkCard({
   const [updatingCover, setUpdatingCover] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleVal, setTitleVal] = useState(project.title);
+  // 封面图加载失败标记：失败时不再回退任何占位网图，改由 <video> 原生渲染真实第一帧（要求1）
+  const [coverFailed, setCoverFailed] = useState(false);
 
   useEffect(() => {
     setTitleVal(project.title);
   }, [project.title]);
+
+  // 封面地址变化（上传新封面/首帧提取回写/重试）后重置失败标记，重新尝试加载真实封面
+  useEffect(() => {
+    setCoverFailed(false);
+  }, [project.thumbnail_url]);
 
   const handleSaveTitle = async () => {
     setIsEditingTitle(false);
@@ -188,7 +195,7 @@ function WorkCard({
           }
         }}
       >
-        {getValidWorkThumbnail(project) ? (
+        {!coverFailed && getValidWorkThumbnail(project) ? (
           <img
             src={getValidWorkThumbnail(project) ?? undefined}
             alt={project.title}
@@ -201,8 +208,9 @@ function WorkCard({
               else if (ratio < 1.2) setAspect('aspect-square');
               else setAspect('aspect-video');
             }}
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80';
+            onError={() => {
+              // 封面图加载失败：严禁回退 unsplash/person 占位图，标记失败并降级到下方 <video> 原生第一帧
+              setCoverFailed(true);
             }}
           />
         ) : project.video_url ? (
@@ -749,19 +757,19 @@ async function seedTestUserVideos(userId: string) {
   }
 }
 
-  const loadProjects = async () => {
-    setLoading(true);
+  const loadProjects = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     const { data } = await supabase.from('video_projects').select('*').order('created_at', { ascending: false });
     const formattedData = (data ?? [])
       .map((p: any) => ({
         ...p,
-        // 标题优先展示生成时对应的提示词
-        title: (p.prompt_text && String(p.prompt_text).trim()) ? String(p.prompt_text).trim() : p.title,
+        // 标题优先展示生成时输入的提示词，统一按去空白摘要规则兜底，空提示词展示“未命名作品”
+        title: makeWorkTitle((p.prompt_text && String(p.prompt_text).trim()) ? String(p.prompt_text) : p.title),
         // 封面只保留真实帧（首帧截图/用户上传），占位图一律清空待异步首帧提取
         thumbnail_url: isRealThumbnail(p.thumbnail_url) ? p.thumbnail_url : null,
       })) as VideoProject[];
     setProjects(formattedData);
-    setLoading(false);
+    if (!silent) setLoading(false);
     // 异步提取原始 AI 视频第一帧作为封面，并回写数据库保证后续加载一致
     formattedData.forEach(prj => {
       if (!prj.thumbnail_url && prj.video_url) {
@@ -773,9 +781,38 @@ async function seedTestUserVideos(userId: string) {
         });
       }
     });
-  };
+  }, []);
 
-  useEffect(() => { loadProjects(); }, []);
+  useEffect(() => { loadProjects(); }, [loadProjects]);
+
+  // ── 生成成功后作品列表自动同步（免手动刷新/切换页面触发）──
+  // 1) Supabase Realtime 监听 video_projects 的 INSERT/UPDATE（跨标签页/窗口生效）；
+  // 2) 工作台落库后派发的自定义事件，通知同标签页内已挂载的作品视图即时刷新；
+  // 3) 页面重新聚焦/可见时静默兜底刷新（覆盖 Realtime 断线场景）。
+  useEffect(() => {
+    if (!user) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleReload = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => { loadProjects(true); }, 600);
+    };
+    const channel = supabase
+      .channel(`works-page-video-projects-${user.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'video_projects', filter: `user_id=eq.${user.id}` }, scheduleReload)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'video_projects', filter: `user_id=eq.${user.id}` }, scheduleReload)
+      .subscribe();
+    const onVisible = () => { if (document.visibilityState === 'visible') scheduleReload(); };
+    window.addEventListener('focus', onVisible);
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('shopro:works-updated', scheduleReload);
+    return () => {
+      if (timer) clearTimeout(timer);
+      supabase.removeChannel(channel);
+      window.removeEventListener('focus', onVisible);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('shopro:works-updated', scheduleReload);
+    };
+  }, [user, loadProjects]);
 
   // ── 素材库加载（切到素材Tab时懒加载）──
   const loadMaterials = useCallback(async () => {
@@ -1017,7 +1054,7 @@ async function seedTestUserVideos(userId: string) {
           </Button>
           {mainTab === 'works' ? (
             <>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={loadProjects} title="刷新">
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => loadProjects()} title="刷新">
                 <RefreshCw className="w-3.5 h-3.5" />
               </Button>
               <Button className="h-9" onClick={() => navigate('/video/create')}>
@@ -1056,7 +1093,7 @@ async function seedTestUserVideos(userId: string) {
 
       {/* ── 多选批量操作控制栏 ── */}
       {selectMode && (
-        <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-primary/10 border border-primary/30 backdrop-blur animate-in fade-in duration-200">
+        <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-primary/10 border border-primary/30 backdrop-blur animate-in fade-in duration-200 flex-wrap">
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium text-foreground">
               已选择 <span className="text-primary font-bold text-base px-1">{selectedIds.size}</span> 项
@@ -1142,7 +1179,7 @@ async function seedTestUserVideos(userId: string) {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filtered.map(p => (
                   <WorkCard key={p.id} project={p} onPreview={setPreviewProject} onDelete={setDeleteId}
-                    onAnalyze={id => navigate(`/data-feedback?projectId=${id}`)} onRetry={handleRetry} onReload={loadProjects}
+                    onAnalyze={id => navigate(`/data-feedback?projectId=${id}`)} onRetry={handleRetry} onReload={() => loadProjects(true)}
                     selectMode={selectMode} isSelected={selectedIds.has(p.id)} onToggleSelect={toggleSelectItem} />
                 ))}
               </div>
@@ -1182,7 +1219,7 @@ async function seedTestUserVideos(userId: string) {
             <div className={cn('w-11 h-11 rounded-xl flex items-center justify-center transition-colors', uploading ? 'bg-primary/20' : 'bg-muted')}>
               <Upload className={cn('w-5 h-5', uploading ? 'text-primary animate-bounce' : 'text-muted-foreground')} />
             </div>
-            <p className="text-sm text-muted-foreground font-medium">
+            <p className="text-sm text-muted-foreground font-medium break-all px-4 text-center">
               {uploading && uploadProgress
                 ? `正在上传 ${uploadProgress.current}/${uploadProgress.total}：${uploadProgress.name.slice(0, 20)}`
                 : uploading ? '上传中，请稍候...' : '拖拽素材至此，或点击选择文件'}
@@ -1223,7 +1260,7 @@ async function seedTestUserVideos(userId: string) {
 
           {/* 素材网格 */}
           {matLoading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
               {[...Array(10)].map((_, i) => (
                 <div key={i} className="rounded-2xl overflow-hidden border border-border/60 bg-card flex flex-col h-full">
                   <Skeleton className="aspect-[4/3] w-full bg-muted" />
@@ -1235,7 +1272,7 @@ async function seedTestUserVideos(userId: string) {
               ))}
             </div>
           ) : filteredMaterials.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
               {filteredMaterials.map(m => (
                 <MaterialCard key={m.id} material={m} onPreview={setMatPreview} onDownload={handleMatDownload} onDelete={setMatDeleteId}
                   selectMode={selectMode} isSelected={selectedIds.has(m.id)} onToggleSelect={toggleSelectItem} />
@@ -1262,13 +1299,14 @@ async function seedTestUserVideos(userId: string) {
               const isSquare = matPreviewAspect === 'aspect-square';
               return (
                 <DialogContent className={cn(
-                  "max-w-[calc(100%-2rem)]",
+                  "max-w-[calc(100%-2rem)] max-h-[92dvh] overflow-y-auto",
                   isVertical ? "md:max-w-[380px]" : isSquare ? "md:max-w-md" : "md:max-w-3xl"
                 )}>
                   <DialogHeader>
                     <DialogTitle className="truncate text-balance pr-6">{matPreview.name}</DialogTitle>
                   </DialogHeader>
-                  <div className={cn("rounded-xl overflow-hidden bg-black relative flex items-center justify-center", matPreviewAspect)}>
+                  {/* 移动端限制媒体最大高度，避免竖版素材把弹窗撑出屏幕 */}
+                  <div className={cn("rounded-xl overflow-hidden bg-black relative flex items-center justify-center max-h-[55dvh] md:max-h-none", matPreviewAspect)}>
                     {matPreview.type === 'image' ? (
                       <img
                         src={matPreview.url}
@@ -1342,13 +1380,14 @@ async function seedTestUserVideos(userId: string) {
           const isSquare = previewAspect === 'aspect-square';
           return (
             <DialogContent className={cn(
-              "max-w-[calc(100%-2rem)]",
+              "max-w-[calc(100%-2rem)] max-h-[92dvh] overflow-y-auto",
               isVertical ? "md:max-w-[380px]" : isSquare ? "md:max-w-md" : "md:max-w-3xl"
             )}>
               <DialogHeader>
                 <DialogTitle className="truncate text-balance pr-6">{previewProject.title}</DialogTitle>
               </DialogHeader>
-              <div className={cn("rounded-xl overflow-hidden bg-black relative flex items-center justify-center", previewAspect)}>
+              {/* 移动端限制媒体最大高度，避免竖版视频把弹窗撑出屏幕 */}
+              <div className={cn("rounded-xl overflow-hidden bg-black relative flex items-center justify-center max-h-[55dvh] md:max-h-none", previewAspect)}>
                 {(previewProject.video_url || previewProject.status === 'completed') ? (
                   <video
                     src={previewProject.video_url || '/Video/CreatOK_2.mp4'}
@@ -1550,7 +1589,8 @@ async function seedTestUserVideos(userId: string) {
 
       {/* ── 批量删除确认弹窗 ── */}
       <AlertDialog open={isBatchDeleteOpen} onOpenChange={setIsBatchDeleteOpen}>
-        <AlertDialogContent>
+        {/* 移动端收窄弹窗宽度，避免铺满整屏边缘 */}
+        <AlertDialogContent className="max-w-[calc(100%-2rem)]">
           <AlertDialogHeader>
             <AlertDialogTitle>确认批量删除</AlertDialogTitle>
             <AlertDialogDescription>

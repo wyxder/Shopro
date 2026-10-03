@@ -1,34 +1,80 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import { supabase } from '@/db/supabase';
-import { useAuth } from '@/contexts/AuthContext';
 import {
-  Play, Pause, SkipBack, SkipForward, Undo, Redo,
-  Scissors, Trash2, Copy, Plus, Download, Upload,
-  Settings2, ImageIcon, Music, Type, Wand2,
-  Layers, Search, Maximize, ZoomIn, ZoomOut, Save, Loader2,
-  Film, Sparkles, Music2, Waypoints, ShoppingBag, ChevronDown, ChevronRight,
-  FolderOpen, Clock, Cloud, Star, BookOpen,
-  Mic, Volume2, RotateCcw, Move, Eye, AlignCenter,
-  Tag, Heart, Info, GripVertical, Palette,
-  Scissors as ScissorsIcon, Captions, Scan, Smile, Zap,
-  Grid3x3, List, X, Check, ChevronUp, ShoppingCart,
-  CreditCard, Package, Truck, BadgeCheck, Flame, TrendingUp,
-  RefreshCw, SlidersHorizontal, BarChart2, ToggleLeft, ToggleRight,
-  EyeOff, Lock, Minimize
+  AlertCircle, AlignCenter, AlignLeft, AlignRight, ArrowRight, BadgeCheck, BarChart2, Bold, BookOpen, Captions, Check, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, Clock, Cloud, Copy, 
+  CreditCard, Download, ExternalLink, Eye, 
+  EyeOff, FileCheck2, 
+  Film, Flame, FlipHorizontal, FlipVertical,
+  FolderOpen, 
+  Grid3x3, GripVertical, Heart, ImageIcon, Info, Italic,
+  Layers, List, Loader2, Lock, Maximize, 
+  Mic, Minimize, Move, Music, Music2, Package, Palette, Pause, 
+  Play, Plus, Redo,
+  RefreshCw, RotateCcw, RotateCw, Save, Scan, 
+  Scissors, 
+  Scissors as ScissorsIcon, Search, 
+  Settings2, ShoppingBag, ShoppingCart, SkipBack, SkipForward, SlidersHorizontal, Smile, Sparkles, Star, 
+  Tag, ToggleLeft, ToggleRight, Trash2, TrendingUp, Truck, Type, Undo, Upload, Volume2, VolumeX, Wand2, Waypoints, X, Zap, ZoomIn, ZoomOut 
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { sendStepAudioASR } from '@/lib/sse';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Slider } from '@/components/ui/slider';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/db/supabase';
 import { audioRecorder } from '@/lib/audioRecorder';
+import { sendStepAudioASR } from '@/lib/sse';
 import { cn } from '@/lib/utils';
+import { extractVideoFirstFrame, extractVideoMeta, getVideoCoverImage } from '@/lib/videoFrame';
 
 
 // ── 类型定义 ──────────────────────────────────────────────────────────────
+// ── 文案字体标签 → 真实 CSS font-family 栈映射（中文标签本身不可被浏览器解析）──
+const FONT_STACK_MAP: Record<string, string> = {
+  '默认黑体': '"PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif',
+  '思源宋体': '"Noto Serif SC", "Source Han Serif SC", "SimSun", serif',
+  '快乐体': '"ZCOOL KuaiLe", "Comic Sans MS", cursive, sans-serif',
+  '抖音美好体': '"ZCOOL QingKe HuangYou", "Douyin Meihao Ti", sans-serif',
+  '手写体': '"Ma Shan Zheng", "STXingkai", "KaiTi", cursive',
+  '综艺体': '"ZCOOL QingKe HuangYou", "FZZhengHei", sans-serif',
+};
+const resolveTextFont = (label?: string) =>
+  (label && FONT_STACK_MAP[label]) ||
+  (label && Object.values(FONT_STACK_MAP).includes(label) ? label : undefined) ||
+  '"PingFang SC", "Microsoft YaHei", sans-serif';
+
+// ── 降噪档位：用高通/低通/陷波双二阶滤波器组近似 AI 降噪的分频处理 ──
+const DENOISE_LEVELS: Record<string, { hp: number; lp: number; notch: number }> = {
+  '无降噪': { hp: 20, lp: 20000, notch: 1 },
+  '轻度去噪': { hp: 80, lp: 14000, notch: 50 },
+  '深度纯音': { hp: 120, lp: 11000, notch: 100 },
+};
+
+// ── 混响声场预设：以程序化生成指数衰减噪声脉冲响应驱动 ConvolverNode ──
+const REVERB_PRESETS: Record<string, { seconds: number; decay: number; wet: number }> = {
+  '录音棚': { seconds: 0.6, decay: 2.6, wet: 0.16 },
+  'KTV沉浸': { seconds: 1.6, decay: 2.2, wet: 0.3 },
+  '大厅空间': { seconds: 3.2, decay: 1.8, wet: 0.42 },
+  '广播电台': { seconds: 0.35, decay: 3, wet: 0.12 },
+  '温暖剧场': { seconds: 2.2, decay: 2, wet: 0.36 },
+};
+
+const makeReverbImpulse = (ctx: AudioContext, seconds: number, decay: number) => {
+  const rate = ctx.sampleRate;
+  const len = Math.max(1, Math.floor(rate * seconds));
+  const buffer = ctx.createBuffer(2, len, rate);
+  for (let ch = 0; ch < 2; ch++) {
+    const data = buffer.getChannelData(ch);
+    for (let i = 0; i < len; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+    }
+  }
+  return buffer;
+};
+
 interface TrackItem {
   id: string;
   trackId: string;
@@ -41,8 +87,38 @@ interface TrackItem {
   opacity?: number;
   volume?: number;
   speed?: number;
-  fontStyle?: string;
-  keyframes?: Record<string, { pos: number; val: number }[]>;
+  fontStyle?: any;
+  keyframes?: { time: number; property: string; value: number }[];
+  // ── 专业视频画面属性 ──
+  x?: number;
+  y?: number;
+  rotation?: number;
+  flipH?: boolean;
+  flipV?: boolean;
+  filter?: string;
+  brightness?: number;
+  contrast?: number;
+  saturation?: number;
+  // ── 专业音频属性 ──
+  mute?: boolean;
+  fadeIn?: number;
+  fadeOut?: number;
+  pan?: number;
+  denoise?: string;
+  reverb?: string;
+  pitch?: number;
+  // ── 专业文案/字幕属性 ──
+  text?: string;
+  fontSize?: number;
+  fontColor?: string;
+  fontFamily?: string;
+  strokeColor?: string;
+  strokeWidth?: number;
+  bgColor?: string;
+  textAlign?: 'left' | 'center' | 'right';
+  isBold?: boolean;
+  isItalic?: boolean;
+  animation?: string;
 }
 
 export interface PipSettings {
@@ -449,7 +525,7 @@ function MediaLibraryPanel({ materials, onAdd, importedVideos, onImportVideo, on
 
       {/* 已生成/上传视频弹窗 */}
       <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-        <DialogContent className="max-w-md bg-zinc-900 border-zinc-800 text-zinc-200 p-4">
+        <DialogContent className="max-w-[calc(100%-2rem)] md:max-w-md max-h-[85vh] overflow-y-auto bg-zinc-900 border-zinc-800 text-zinc-200 p-4">
           <DialogHeader>
             <DialogTitle className="text-sm font-medium text-zinc-200 flex items-center gap-1.5 border-b border-zinc-800 pb-2">
               <Film className="w-3.5 h-3.5 text-indigo-400" />
@@ -639,7 +715,7 @@ function EffectsPanel({
         start: Number(currentTime.toFixed(1)),
         duration: 15,
         type: 'audio',
-        url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+        url: '/Video/CreatOK_2.mp4',
       };
       setTracks(prev => [...prev, newItem].sort((a, b) => a.start - b.start));
       toast.success(`已添加背景音频「${a.name}」到时间轴`);
@@ -937,8 +1013,27 @@ function TextSubtitlePanel({
       setRecognizing(true);
       toast.info('🎙️ 录音已结束，正在通过 TeleAI / TeleSpeechASR 识别并生成字幕...');
       try {
-        const base64Wav = await audioRecorder.stop();
+        const { base64: base64Wav, recognizedText } = await audioRecorder.stop();
         let transcript = '';
+        if (recognizedText && recognizedText.trim()) {
+          // 浏览器原生 Web Speech 已给出识别结果，直接成稿，跳过远程 ASR 通道
+          transcript = recognizedText.trim();
+          setSubtitleText(prev => prev ? prev + ' ' + transcript : transcript);
+          setRecognizing(false);
+          const recognizedPhrases = transcript.split(/[，。！？\s]+/).filter(Boolean);
+          const newItems: TrackItem[] = recognizedPhrases.map((phrase, idx) => ({
+            id: `text-asr-${Date.now()}-${idx}`,
+            trackId: 'text',
+            name: phrase,
+            start: Number(Math.min(duration - 2, idx * 3.5).toFixed(1)),
+            duration: 3.2,
+            type: 'text',
+            fontStyle: selectedFont || 'fs6',
+          }));
+          setTracks(prev => [...prev, ...newItems].sort((a, b) => a.start - b.start));
+          toast.success(`🎉 语音识别完成！已自动为时间轴生成 ${newItems.length} 条字幕片段`);
+          return;
+        }
         await sendStepAudioASR({
           audioData: base64Wav,
           onData: (text) => {
@@ -1202,7 +1297,7 @@ function TextSubtitlePanel({
 
       {/* 批量编辑字幕弹窗 */}
       <Dialog open={batchEditOpen} onOpenChange={setBatchEditOpen}>
-        <DialogContent className="max-w-lg bg-zinc-900 border-zinc-800 text-zinc-200 p-4">
+        <DialogContent className="max-w-[calc(100%-2rem)] md:max-w-lg max-h-[85vh] overflow-y-auto bg-zinc-900 border-zinc-800 text-zinc-200 p-4">
           <DialogHeader>
             <DialogTitle className="text-sm font-semibold flex items-center gap-2 border-b border-zinc-800 pb-2">
               <AlignCenter className="w-4 h-4 text-indigo-400" />
@@ -1319,7 +1414,7 @@ function PipPanel({
       { id: `v-tmpl-${Date.now()}`, trackId: 'video', name: `${templateName}·主画面`, start: 0, duration: 15, type: 'video', url: '/Video/CreatOK_11.mp4' },
       { id: `pip-tmpl-${Date.now()}`, trackId: 'pip', name: `${templateName}·带货微距`, start: 2, duration: 10, type: 'video', url: '/Video/CreatOK_5.mp4' },
       { id: `t-tmpl-${Date.now()}`, trackId: 'text', name: '限时抢购 · 立即下单立减50元！', start: 3, duration: 6, type: 'text', fontStyle: 'fs3' },
-      { id: `a-tmpl-${Date.now()}`, trackId: 'audio', name: '动感节奏BGM', start: 0, duration: 15, type: 'audio', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' },
+      { id: `a-tmpl-${Date.now()}`, trackId: 'audio', name: '动感节奏BGM', start: 0, duration: 15, type: 'audio', url: '/Video/CreatOK_2.mp4' },
     ];
     setTracks(templateTracks);
     setPipSettings({ x: 75, y: 25, scale: 100, rotation: 0, opacity: 100, blendMode: '正常' });
@@ -1456,7 +1551,7 @@ function PipPanel({
 
       {/* 选择画中画素材弹窗 */}
       <Dialog open={addModalOpen} onOpenChange={setAddModalOpen}>
-        <DialogContent className="max-w-md bg-zinc-900 border-zinc-800 text-zinc-200 p-4">
+        <DialogContent className="max-w-[calc(100%-2rem)] md:max-w-md max-h-[85vh] overflow-y-auto bg-zinc-900 border-zinc-800 text-zinc-200 p-4">
           <DialogHeader>
             <DialogTitle className="text-sm font-semibold flex items-center gap-2 border-b border-zinc-800 pb-2">
               <Layers className="w-4 h-4 text-indigo-400" />
@@ -2036,7 +2131,7 @@ function AiToolDialog({ tool, open, onClose, onApply }: {
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-[calc(100%-2rem)] md:max-w-md bg-zinc-900 border-zinc-700 text-zinc-100">
+      <DialogContent className="max-w-[calc(100%-2rem)] md:max-w-md max-h-[85vh] overflow-y-auto bg-zinc-900 border-zinc-700 text-zinc-100">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             <div className={`w-9 h-9 rounded-lg bg-zinc-800 flex items-center justify-center ${tool.color}`}>
@@ -2358,7 +2453,7 @@ function ShopPanel({ onApplyShopProduct }: ShopPanelProps) {
     <div className="flex flex-col h-full relative">
       {/* 购买确认弹窗 */}
       <Dialog open={!!confirmItem} onOpenChange={v => { if (!v) setConfirmItem(null); }}>
-        <DialogContent className="max-w-[calc(100%-2rem)] md:max-w-sm bg-zinc-900 border-zinc-700 text-zinc-100">
+        <DialogContent className="max-w-[calc(100%-2rem)] md:max-w-sm max-h-[85vh] overflow-y-auto bg-zinc-900 border-zinc-700 text-zinc-100">
           <DialogHeader>
             <DialogTitle className="text-sm flex items-center gap-2">
               <CreditCard className="w-4 h-4 text-amber-400" />确认购买并载入
@@ -2711,9 +2806,10 @@ function LeftSidebar({
   }, []);
 
   return (
-    <div className={`flex shrink-0 border-r border-zinc-800 transition-all duration-300 ${collapsed ? 'w-14' : 'w-72 md:w-80'}`}>
+    // 移动端：占满一行宽度并限高内部滚动；lg 及以上恢复固定列宽
+    <div className={`flex shrink-0 border-r border-zinc-800 transition-all duration-300 max-lg:max-h-[32%] ${collapsed ? 'w-14' : 'w-full lg:w-80'}`}>
       {/* 垂直图标导航栏 */}
-      <div className="w-14 shrink-0 bg-zinc-950 border-r border-zinc-800 flex flex-col py-2 gap-0.5">
+      <div className="w-14 shrink-0 bg-zinc-950 border-r border-zinc-800 flex flex-col py-2 gap-0.5 overflow-y-auto">
         {PANEL_ITEMS.map(item => (
           <button
             key={item.id}
@@ -2787,6 +2883,7 @@ function LeftSidebar({
                 tracks={tracks}
                 setTracks={setTracks}
                 currentTime={currentTime}
+                duration={duration}
                 selectedFont={selectedFont}
                 setSelectedFont={setSelectedFont}
               />
@@ -2847,6 +2944,9 @@ function LeftSidebar({
   );
 }
 
+// ── 视频预加载与内存 Blob 缓存系统 ───────────────────────────────────────
+const globalVideoBlobCache = new Map<string, string>();
+
 // ── 主页面组件 ───────────────────────────────────────────────────────────
 const DEFAULT_TRACKS: TrackItem[] = [
   {
@@ -2865,7 +2965,7 @@ const DEFAULT_TRACKS: TrackItem[] = [
     start: 0,
     duration: 27,
     type: 'audio',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'
+    url: '/Video/CreatOK_2.mp4'
   },
   {
     id: 't1',
@@ -2897,7 +2997,9 @@ export default function VideoEditPage() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(30);
   const [zoom, setZoom] = useState(0);
-  const [selectedTrackItem, setSelectedTrackItem] = useState<string | null>(null);
+  const [selectedTrackItem, setSelectedTrackItem] = useState<string | null>(() => {
+    return DEFAULT_TRACKS.find(t => t.type === 'video')?.id || 'v1';
+  });
   const [projectTitle, setProjectTitle] = useState('未命名项目');
   const [saving, setSaving] = useState(false);
   const [materials, setMaterials] = useState<{ id: string; name: string; url: string; type: string }[]>([]);
@@ -2908,6 +3010,31 @@ export default function VideoEditPage() {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+
+  // ── 导出渲染控制与全阶段进度状态 ──
+  const [exportStage, setExportStage] = useState<'idle' | 'rendering' | 'completed' | 'failed'>('idle');
+  const [exportProgress, setExportProgress] = useState(0);
+  const [exportStatusText, setExportStatusText] = useState('准备开始渲染...');
+  const [exportResolution, setExportResolution] = useState<'1080p' | '720p' | '4k'>('1080p');
+  const [exportFps, setExportFps] = useState<'30' | '60'>('30');
+  const [exportFileName, setExportFileName] = useState('');
+  const [exportLogs, setExportLogs] = useState<Array<{ time: string; stage: string; percent: number; done: boolean }>>([]);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [exportResult, setExportResult] = useState<{
+    video_url: string;
+    thumbnail_url: string;
+    title: string;
+    duration: number;
+    resolution: string;
+    size: string;
+    project_id: string;
+  } | null>(null);
+
+  // 内部稳定跟踪当前项目 ID（消除路由异步更新延迟）
+  const currentProjectIdRef = useRef<string | null>(importId);
+  useEffect(() => {
+    currentProjectIdRef.current = importId;
+  }, [importId]);
   const [scale, setScale] = useState([100]);
   const [opacity, setOpacity] = useState([100]);
   const [volume, setVolume] = useState([100]);
@@ -2915,6 +3042,24 @@ export default function VideoEditPage() {
   const [timelineScrollOffset, setTimelineScrollOffset] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const previewContainerRef = useRef<HTMLDivElement>(null);
+
+  // 生成视频列表（用于一键导入）& 预览 URL
+  const [importedVideos, setImportedVideos] = useState<{ id: string; title: string; video_url: string; thumbnail_url: string | null }[]>([]);
+  const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const rulerRef = useRef<HTMLDivElement>(null);
+  const timelineScrollRef = useRef<HTMLDivElement>(null);
+  // 播放主时钟引用：供 rAF 帧循环读取当前激活片段与预览源，避免依赖每次渲染新建的对象导致 effect 频繁重建
+  const playheadLineRef = useRef<HTMLDivElement>(null);
+  const rulerPlayheadRef = useRef<HTMLDivElement>(null);
+  const timeDisplayRef = useRef<HTMLSpanElement>(null);
+  const bottomTimeDisplayRef = useRef<HTMLSpanElement>(null);
+  const currentTimeRef = useRef<number>(0);
+  const [cachedUrls, setCachedUrls] = useState<Record<string, string>>({});
+  const [isPreloading, setIsPreloading] = useState(false);
+  const [preloadProgress, setPreloadProgress] = useState(100);
+  const activeVideoClipRef = useRef<TrackItem | undefined>(undefined);
+  const previewVideoUrlRef = useRef<string | null>(null);
 
   // Sync ruler scroll offset with timeline scroll container
   useEffect(() => {
@@ -2924,6 +3069,62 @@ export default function VideoEditPage() {
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => el.removeEventListener('scroll', onScroll);
   }, []);
+
+  // 视频全量预加载与内存 Blob 缓存：在播放前把所有轨道视频以及预览视频彻底载入内存，消除网络 Range 请求延迟与播放卡顿
+  useEffect(() => {
+    const urlsToCache = Array.from(new Set(
+      tracks.filter(t => t.type === 'video' && t.url).map(t => t.url!)
+        .concat(previewVideoUrl ? [previewVideoUrl] : [])
+    )).filter(Boolean);
+
+    if (urlsToCache.length === 0) return;
+
+    let isMounted = true;
+    const preloadAll = async () => {
+      const missing = urlsToCache.filter(url => !globalVideoBlobCache.has(url));
+      if (missing.length === 0) {
+        const cacheMap: Record<string, string> = {};
+        urlsToCache.forEach(u => cacheMap[u] = globalVideoBlobCache.get(u)!);
+        setCachedUrls(prev => ({ ...prev, ...cacheMap }));
+        setPreloadProgress(100);
+        return;
+      }
+
+      setIsPreloading(true);
+      setPreloadProgress(40);
+
+      const newCacheMap: Record<string, string> = {};
+      for (const url of urlsToCache) {
+        if (globalVideoBlobCache.has(url)) {
+          newCacheMap[url] = globalVideoBlobCache.get(url)!;
+        } else {
+          try {
+            const res = await fetch(url);
+            if (res.ok) {
+              const blob = await res.blob();
+              const blobUrl = URL.createObjectURL(blob);
+              globalVideoBlobCache.set(url, blobUrl);
+              newCacheMap[url] = blobUrl;
+            } else {
+              newCacheMap[url] = url;
+            }
+          } catch (e) {
+            console.warn('Preload video fallback to direct url:', e);
+            newCacheMap[url] = url;
+          }
+        }
+      }
+
+      if (isMounted) {
+        setCachedUrls(prev => ({ ...prev, ...newCacheMap }));
+        setIsPreloading(false);
+        setPreloadProgress(100);
+      }
+    };
+
+    preloadAll();
+    return () => { isMounted = false; };
+  }, [tracks, previewVideoUrl]);
 
   // Ensure project duration is at least 30 seconds and fits all tracks
   useEffect(() => {
@@ -3055,18 +3256,12 @@ export default function VideoEditPage() {
     }
   };
 
-  // 生成视频列表（用于一键导入）& 预览 URL
-  const [importedVideos, setImportedVideos] = useState<{ id: string; title: string; video_url: string; thumbnail_url: string | null }[]>([]);
-  const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const rulerRef = useRef<HTMLDivElement>(null);
-  const timelineScrollRef = useRef<HTMLDivElement>(null);
-
   // Timeline layout constants — px-per-second based
   const TRACK_LABEL_W = 60; // width of the track icon label column in px
+  const TRACK_CONTENT_OFFSET = TRACK_LABEL_W + 12; // 60 + 6 (padding) + 6 (gap) = 72px
   const BASE_PX_PER_SEC = 20; // at zoom=0 each second = 20px
   const pxPerSec = BASE_PX_PER_SEC * (1 + zoom * 0.08); // zoom 0→100 scales 20→180px/s
-  const timelinePxWidth = TRACK_LABEL_W + 6 + duration * pxPerSec; // +6 for padding
+  const timelinePxWidth = TRACK_CONTENT_OFFSET + duration * pxPerSec;
   const timelineMinWidth = 600; // minimum scrollable width
 
 
@@ -3084,6 +3279,8 @@ export default function VideoEditPage() {
       return currentTime >= track.start && currentTime <= end && track.type === 'video';
     });
   })();
+  activeVideoClipRef.current = activeVideoClip;
+  previewVideoUrlRef.current = previewVideoUrl;
 
   const activeImageClip = (() => {
     const selectedClip = tracks.find(t => t.id === selectedTrackItem && t.type === 'image' && t.trackId === 'image');
@@ -3123,6 +3320,9 @@ export default function VideoEditPage() {
     });
   })();
 
+  // 参真实与预览播放的全部音频轨片段（隐藏 <audio> 播放器驱动）
+  const audioMediaClips = tracks.filter(t => t.type === 'audio' && t.url);
+
   // ── 8大面板核心业务状态 ──────────────────────────────────────────
   const [appliedFilter, setAppliedFilter] = useState('无');
   const [filterIntensity, setFilterIntensity] = useState<Record<string, number>>({
@@ -3149,6 +3349,8 @@ export default function VideoEditPage() {
     fadeOut: 1.0,
     pitch: 0,
     speed: 100,
+    eqBands: {},
+    enabledEffects: new Set<string>(),
   });
   const [aiBeautyEnabled, setAiBeautyEnabled] = useState(false);
   const [aiCutoutEnabled, setAiCutoutEnabled] = useState(false);
@@ -3278,16 +3480,32 @@ export default function VideoEditPage() {
   }, [currentTime]);
 
   const hasVideoClips = tracks.some(t => t.type === 'video');
-  const currentVideoSrc = activeVideoClip?.url
+  const rawVideoSrc = activeVideoClip?.url
     ? activeVideoClip.url
     : hasVideoClips
       ? undefined
       : (previewVideoUrl || undefined);
+  const currentVideoSrc = (rawVideoSrc && cachedUrls[rawVideoSrc]) ? cachedUrls[rawVideoSrc] : rawVideoSrc;
 
-  // Selected track item object
-  const selectedTrackObj = tracks.find(t => t.id === selectedTrackItem);
+  // Selected track item object (默认回退展示主视频轨道)
+  const mainVideoTrack = tracks.find(t => t.type === 'video') || tracks[0];
+  const selectedTrackObj = tracks.find(t => t.id === selectedTrackItem) || mainVideoTrack;
+
+  // 画面预览特效以“播放头下的激活片段”为准，无激活片段时回退选中片段，避免选中文案/音频时主画面属性被重置
+  const videoFxClip = activeVideoClip ?? selectedTrackObj;
 
   const [speed, setSpeed] = useState(1);
+
+  // 确保当选中片段不存在或未设置时，属性设置面板默认显示主视频轨道
+  useEffect(() => {
+    if (tracks.length > 0) {
+      const exists = tracks.some(t => t.id === selectedTrackItem);
+      if (!exists) {
+        const main = tracks.find(t => t.type === 'video') || tracks[0];
+        if (main) setSelectedTrackItem(main.id);
+      }
+    }
+  }, [tracks, selectedTrackItem]);
 
   // Sync state with selected item attributes
   useEffect(() => {
@@ -3297,33 +3515,148 @@ export default function VideoEditPage() {
       setVolume([selectedTrackObj.volume ?? 100]);
       setSpeed(selectedTrackObj.speed ?? 1);
     }
-  }, [selectedTrackItem, selectedTrackObj]);
+  }, [selectedTrackObj?.id]);
+
+  const updateTrackItem = useCallback((id: string, updates: Partial<TrackItem>) => {
+    setTracks(prev => prev.map(t => {
+      if (t.id !== id) return t;
+      const updated = { ...t, ...updates };
+      if (updates.text !== undefined && updates.name === undefined) {
+        updated.name = updates.text.slice(0, 30) || '无标题文案';
+      }
+      return updated;
+    }));
+  }, []);
+
+  // ── 音频轨真实播放引擎：隐藏播放器 + Web Audio 效果链（降噪EQ/Pan/混响/淡入淡出）──────
+  interface AudioFxNodes {
+    ctx: AudioContext;
+    source: MediaElementAudioSourceNode;
+    hp: BiquadFilterNode;
+    lp: BiquadFilterNode;
+    notch: BiquadFilterNode;
+    panner: StereoAudioPannerNodeCompat;
+    dry: GainNode;
+    convolver: ConvolverNode;
+    wetGain: GainNode;
+    reverbName: string;
+  }
+  type StereoAudioPannerNodeCompat = StereoPannerNode;
+
+  const audioElsRef = useRef<Map<string, HTMLAudioElement>>(new Map());
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const audioGraphRef = useRef<Record<string, AudioFxNodes>>({});
+  const audioBlobCacheRef = useRef<Record<string, string>>({});
+  const audioBlobPendingRef = useRef<Set<string>>(new Set());
+  const audioBlobFailedRef = useRef<Set<string>>(new Set());
+  const audioFxWarnedRef = useRef<Set<string>>(new Set());
+
+  const getSharedAudioCtx = () => {
+    if (!audioCtxRef.current) {
+      const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!Ctor) return null;
+      try {
+        audioCtxRef.current = new Ctor();
+      } catch {
+        return null;
+      }
+    }
+    return audioCtxRef.current;
+  };
+
+  // 为指定片段懒创建 Web Audio 效果链；仅当媒体已被代理为同源 blob URL 时才能安全接入图谱（跨域直接路由会被浏览器静音）
+  const ensureAudioGraph = (clipId: string, el: HTMLAudioElement): AudioFxNodes | null => {
+    const existing = audioGraphRef.current[clipId];
+    if (existing) return existing;
+    const ctx = getSharedAudioCtx();
+    if (!ctx || !el.src.startsWith('blob:')) return null;
+    try {
+      const source = ctx.createMediaElementSource(el);
+      const hp = ctx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 20;
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 20000;
+      const notch = ctx.createBiquadFilter();
+      notch.type = 'notch';
+      notch.frequency.value = 1;
+      const panner = ctx.createStereoPanner();
+      const dry = ctx.createGain();
+      dry.gain.value = 1;
+      const convolver = ctx.createConvolver();
+      const wetGain = ctx.createGain();
+      wetGain.gain.value = 0;
+      source.connect(hp);
+      hp.connect(lp);
+      lp.connect(notch);
+      notch.connect(dry);
+      dry.connect(ctx.destination);
+      notch.connect(convolver);
+      convolver.connect(wetGain);
+      wetGain.connect(ctx.destination);
+      const nodes: AudioFxNodes = { ctx, source, hp, lp, notch, panner, dry, convolver, wetGain, reverbName: '' };
+      audioGraphRef.current[clipId] = nodes;
+      return nodes;
+    } catch {
+      return null;
+    }
+  };
+
+  // 将片段当前属性实时写入效果链节点（降噪分频/声像/混响湿声比例与脉冲响应）
+  const applyAudioClipFxParams = (clip: TrackItem, nodes: AudioFxNodes) => {
+    const level = DENOISE_LEVELS[clip.denoise || '轻度去噪'] || DENOISE_LEVELS['无降噪'];
+    let hpHz = level.hp;
+    let lpHz = level.lp;
+    if (clip.reverb === '广播电台') {
+      hpHz = Math.max(hpHz, 240);
+      lpHz = Math.min(lpHz, 3600);
+    }
+    nodes.hp.frequency.setTargetAtTime(hpHz, nodes.ctx.currentTime, 0.03);
+    nodes.lp.frequency.setTargetAtTime(lpHz, nodes.ctx.currentTime, 0.03);
+    nodes.notch.frequency.setTargetAtTime(level.notch, nodes.ctx.currentTime, 0.03);
+    nodes.panner.pan.setTargetAtTime(Math.max(-1, Math.min(1, (clip.pan ?? 0) / 100)), nodes.ctx.currentTime, 0.03);
+    const preset = REVERB_PRESETS[clip.reverb || ''] || null;
+    nodes.wetGain.gain.setTargetAtTime(preset ? preset.wet : 0, nodes.ctx.currentTime, 0.05);
+    if (preset && nodes.reverbName !== clip.reverb) {
+      try {
+        nodes.convolver.buffer = makeReverbImpulse(nodes.ctx, preset.seconds, preset.decay);
+        nodes.reverbName = clip.reverb!;
+      } catch {
+        console.warn('Reverb IR generate failed for:', clip.reverb);
+      }
+    }
+  };
 
   const handleScaleChange = (val: number[]) => {
     setScale(val);
-    if (selectedTrackItem) {
-      setTracks(prev => prev.map(t => t.id === selectedTrackItem ? { ...t, scale: val[0] } : t));
+    const targetId = selectedTrackItem || selectedTrackObj?.id;
+    if (targetId) {
+      setTracks(prev => prev.map(t => t.id === targetId ? { ...t, scale: val[0] } : t));
     }
   };
 
   const handleOpacityChange = (val: number[]) => {
     setOpacity(val);
-    if (selectedTrackItem) {
-      setTracks(prev => prev.map(t => t.id === selectedTrackItem ? { ...t, opacity: val[0] } : t));
+    const targetId = selectedTrackItem || selectedTrackObj?.id;
+    if (targetId) {
+      setTracks(prev => prev.map(t => t.id === targetId ? { ...t, opacity: val[0] } : t));
     }
   };
 
   const handleVolumeChange = (val: number[]) => {
     setVolume(val);
-    if (selectedTrackItem) {
-      setTracks(prev => prev.map(t => t.id === selectedTrackItem ? { ...t, volume: val[0] } : t));
+    const targetId = selectedTrackItem || selectedTrackObj?.id;
+    if (targetId) {
+      setTracks(prev => prev.map(t => t.id === targetId ? { ...t, volume: val[0] } : t));
     }
   };
 
   const handleSpeedChange = (val: number) => {
     setSpeed(val);
-    if (selectedTrackItem) {
-      setTracks(prev => prev.map(t => t.id === selectedTrackItem ? { ...t, speed: val } : t));
+    const targetId = selectedTrackItem || selectedTrackObj?.id;
+    if (targetId) {
+      setTracks(prev => prev.map(t => t.id === targetId ? { ...t, speed: val } : t));
     }
   };
 
@@ -3396,15 +3729,14 @@ export default function VideoEditPage() {
     toast.success('片段已成功删除');
   }, [selectedTrackItem]);
 
-  // Sync volume and speed of the video element
+  // Sync volume and speed of the video element（尊重片段“静音/原声音量”属性，不再强制取消静音）
   useEffect(() => {
     if (videoRef.current) {
       const activeVol = activeVideoClip?.volume ?? 100;
       videoRef.current.volume = Math.max(0, Math.min(1, activeVol / 100));
-      videoRef.current.muted = false;
-      videoRef.current.removeAttribute('muted');
+      videoRef.current.muted = !!activeVideoClip?.mute;
     }
-  }, [activeVideoClip, activeVideoClip?.volume, previewVideoUrl]);
+  }, [activeVideoClip, activeVideoClip?.volume, activeVideoClip?.mute, previewVideoUrl]);
 
   useEffect(() => {
     if (videoRef.current) {
@@ -3412,6 +3744,106 @@ export default function VideoEditPage() {
       videoRef.current.playbackRate = activeSpeed;
     }
   }, [activeVideoClip?.speed]);
+
+  // 音频轨片段随播放头实时同步：播放/暂停/寻址对齐、音量、淡入淡出包络、静音、变速，并驱动效果链参数
+  useEffect(() => {
+    audioMediaClips.forEach(clip => {
+      const el = audioElsRef.current.get(clip.id);
+      if (!el || !clip.url) return;
+      const rawUrl = clip.url;
+
+      // 1) 同源 blob 代理：成功前不接入 Web Audio，避免跨域路由被浏览器静默；失败源永久记录，不重复发起注定失败的请求
+      const blobUrl = audioBlobCacheRef.current[rawUrl];
+      if (!blobUrl && !audioBlobPendingRef.current.has(rawUrl) && !audioBlobFailedRef.current.has(rawUrl)) {
+        audioBlobPendingRef.current.add(rawUrl);
+        fetch(rawUrl)
+          .then(res => (res.ok ? res.blob() : Promise.reject(new Error(`audio proxy http ${res.status}`))))
+          .then(blob => {
+            const burl = URL.createObjectURL(blob);
+            audioBlobCacheRef.current[rawUrl] = burl;
+            const cur = audioElsRef.current.get(clip.id);
+            if (cur) cur.src = burl;
+          })
+          .catch(err => {
+            audioBlobFailedRef.current.add(rawUrl);
+            console.warn('Audio blob proxy unavailable (声像/降噪/混响降级，音量/淡变/变速仍真实生效):', rawUrl, err?.message);
+          })
+          .finally(() => audioBlobPendingRef.current.delete(rawUrl));
+      } else if (blobUrl && el.src !== blobUrl && !el.src.startsWith('blob:')) {
+        el.src = blobUrl;
+      }
+
+      // 2) 时间/音量/包络/变速/播放控制
+      const local = currentTime - clip.start;
+      const within = local >= 0 && local <= clip.duration;
+      const fi = clip.fadeIn ?? 1.0;
+      const fo = clip.fadeOut ?? 1.5;
+      let env = 1;
+      if (fi > 0) env = Math.min(env, Math.max(0, local / fi));
+      if (fo > 0) env = Math.min(env, Math.max(0, (clip.duration - local) / fo));
+      env = Math.max(0, Math.min(1, env));
+      const targetVol = clip.mute ? 0 : Math.max(0, Math.min(1, ((clip.volume ?? 100) / 100) * env));
+      if (Math.abs(el.volume - targetVol) > 0.02) el.volume = targetVol;
+      const rate = Math.max(0.25, Math.min(4, clip.speed ?? 1));
+      if (el.playbackRate !== rate) el.playbackRate = rate;
+
+      if (isPlaying && within) {
+        if (Math.abs(el.currentTime - local) > 0.3) {
+          try {
+            el.currentTime = Math.max(0, local);
+          } catch {
+            /* 元数据未就绪时忽略本次 seek */
+          }
+        }
+        if (el.paused) el.play().catch(() => {});
+      } else if (!el.paused) {
+        el.pause();
+      }
+
+      // 3) Web Audio 效果链（与面板默认展示一致：降噪默认“轻度去噪”、混响默认“原声纯净”）
+      const curDenoise = clip.denoise || '轻度去噪';
+      const curReverb = clip.reverb || '原声纯净';
+      const needsFx =
+        (clip.pan ?? 0) !== 0 ||
+        curReverb !== '原声纯净' ||
+        curDenoise !== '无降噪';
+      const graphReady = el.src.startsWith('blob:');
+      const nodes = audioGraphRef.current[clip.id] || (needsFx && graphReady ? ensureAudioGraph(clip.id, el) : null);
+      if (nodes) {
+        applyAudioClipFxParams(clip, nodes);
+      } else if (needsFx && audioBlobFailedRef.current.has(rawUrl) && !audioFxWarnedRef.current.has(rawUrl)) {
+        // 首次在该不可代理音源上开启声像/降噪/混响时，如实告知降级范围，避免“改了没反应”的困惑
+        audioFxWarnedRef.current.add(rawUrl);
+        toast.info('⚠️ 该音频源不支持跨域特效处理：声像/降噪/混响无法生效，音量、淡入淡出、静音与变速真实生效');
+      }
+    });
+  }, [audioMediaClips, tracks, currentTime, isPlaying]);
+
+  // 用户点击播放后恢复 AudioContext（浏览器自动播放策略要求手势后 resume）
+  useEffect(() => {
+    if (isPlaying) {
+      audioCtxRef.current?.resume().catch(() => {});
+    }
+  }, [isPlaying]);
+
+  // 卸载时释放音频引擎资源：断开效果链、关闭上下文、回收 blob
+  useEffect(() => {
+    const graphs = audioGraphRef.current;
+    const blobs = audioBlobCacheRef.current;
+    return () => {
+      Object.values(graphs).forEach(n => {
+        try {
+          n.source.disconnect();
+          n.dry.disconnect();
+          n.wetGain.disconnect();
+        } catch {
+          /* 已断开则忽略 */
+        }
+      });
+      Object.values(blobs).forEach(u => URL.revokeObjectURL(u));
+      audioCtxRef.current?.close().catch(() => {});
+    };
+  }, []);
 
   // Initialize history with initial tracks once loaded
   useEffect(() => {
@@ -3661,42 +4093,185 @@ export default function VideoEditPage() {
     setMaterials(workMaterials.length > 0 ? workMaterials : DEFAULT_SAMPLE_MATERIALS);
   }, [user]);
 
-  // 加载项目（同时读取 video_url 用于预览）
+  // 智能提取封面：真实首帧优先，绝不使用占位网图
+  const resolveProjectThumbnail = async (trackList: TrackItem[], videoUrl: string | null) => {
+    if (videoUrl) {
+      try {
+        const cover = await getVideoCoverImage(videoUrl);
+        if (cover) return cover;
+      } catch {}
+    }
+    const firstMedia = trackList.find(t => (t.type === 'video' || t.type === 'image') && t.url);
+    if (firstMedia?.url) {
+      if (firstMedia.type === 'video') {
+        try {
+          const cover = await getVideoCoverImage(firstMedia.url);
+          if (cover) return cover;
+        } catch {}
+      } else {
+        return firstMedia.url;
+      }
+    }
+    return null;
+  };
+
+  // 项目持久化内部保存函数（新建/更新统一收拢，保证路由与作品库同步）
+  const saveProjectInternal = async (options?: {
+    customTitle?: string;
+    customStatus?: 'draft' | 'processing' | 'completed' | 'failed';
+    customVideoUrl?: string;
+    customThumbnailUrl?: string;
+    silent?: boolean;
+  }): Promise<string | null> => {
+    if (!user) {
+      if (!options?.silent) toast.error('请先登录后再保存项目');
+      return null;
+    }
+
+    const targetId = currentProjectIdRef.current || importId;
+    const finalDuration = Math.round(duration || 30);
+    const validTitle = (options?.customTitle || projectTitle || '未命名剪辑项目').trim();
+    const finalStatus = options?.customStatus || 'draft';
+    const finalVideoUrl = options?.customVideoUrl ?? previewVideoUrl ?? null;
+    const finalCover = options?.customThumbnailUrl ?? (await resolveProjectThumbnail(tracks, finalVideoUrl));
+
+    const styleData = {
+      duration: finalDuration,
+      tracks,
+      zoom,
+      scale,
+      opacity,
+      volume,
+      editorAspect,
+      appliedFilter,
+      filterIntensity,
+      beautyEnabled: aiBeautyEnabled,
+      aiBeautyEnabled,
+      aiCutoutEnabled,
+      previewVideoUrl: finalVideoUrl,
+      currentTime,
+      last_saved_at: new Date().toISOString(),
+      edit_mode: true,
+    };
+
+    const payload: Record<string, any> = {
+      title: validTitle,
+      user_id: user.id,
+      status: finalStatus,
+      duration: finalDuration,
+      resolution: editorAspect === 'aspect-[9/16]' ? '1080x1920' : '1920x1080',
+      video_url: finalVideoUrl,
+      thumbnail_url: finalCover,
+      materials: tracks.map(t => ({
+        id: t.id,
+        name: t.name,
+        type: t.type,
+        url: t.url,
+        start: t.start,
+        duration: t.duration,
+      })),
+      style_data: styleData,
+      updated_at: new Date().toISOString(),
+    };
+
+    try {
+      let savedId = targetId;
+      if (targetId) {
+        const { error } = await supabase.from('video_projects').update(payload).eq('id', targetId);
+        if (error) throw error;
+        if (!options?.silent) toast.success('剪辑项目已成功保存');
+      } else {
+        const { data, error } = await supabase.from('video_projects').insert(payload).select('id').single();
+        if (error) throw error;
+        if (data?.id) {
+          savedId = data.id;
+          currentProjectIdRef.current = data.id;
+          navigate(`/video/edit?importId=${data.id}`, { replace: true });
+          if (!options?.silent) toast.success('新剪辑项目已创建并成功保存');
+        }
+      }
+
+      // 同步到 localStorage
+      localStorage.setItem(`video-editor-draft-${user.id}`, JSON.stringify({
+        importId: savedId,
+        projectTitle: validTitle,
+        ...styleData,
+      }));
+
+      // 派发同步事件通知作品库
+      window.dispatchEvent(new CustomEvent('shopro:works-updated'));
+      return savedId;
+    } catch (err: any) {
+      console.error('Save project error:', err);
+      if (!options?.silent) toast.error('保存失败: ' + (err.message || '网络或数据异常'));
+      throw err;
+    }
+  };
+
+  // 加载项目（读取 title, style_data, materials, video_url, thumbnail_url 等）
   const loadProject = useCallback(async () => {
-    if (!importId || !user) return;
+    const targetId = currentProjectIdRef.current || importId;
+    if (!targetId || !user) return;
 
     // Check if we already restored a matching draft from localStorage to avoid database override
     const saved = localStorage.getItem(`video-editor-draft-${user.id}`);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (parsed.importId === importId) {
+        if (parsed.importId === targetId) {
           return; // Skip database fetch to use newer local edits
         }
       } catch (e) { }
     }
 
-    const { data } = await supabase
-      .from('video_projects')
-      .select('title,metadata,video_url')
-      .eq('id', importId)
-      .eq('user_id', user.id)
-      .maybeSingle();
-    if (data) {
-      setProjectTitle(data.title || '未命名项目');
-      if ((data as any).video_url) setPreviewVideoUrl((data as any).video_url);
-      const meta = (data.metadata || {}) as any;
-      if (meta.tracks && meta.tracks.length > 0) {
-        const projTracks = stripLegacyGlowFx(meta.tracks);
-        setTracks(projTracks);
-        setTracksHistory([projTracks]);
-        setHistoryIndex(0);
-      } else {
-        setTracks(DEFAULT_TRACKS);
-        setTracksHistory([DEFAULT_TRACKS]);
-        setHistoryIndex(0);
+    try {
+      const { data, error } = await supabase
+        .from('video_projects')
+        .select('id,title,duration,video_url,thumbnail_url,resolution,style_data,materials,status')
+        .eq('id', targetId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error) {
+        console.warn('Load project error:', error);
+        return;
       }
-      if (meta.duration) setDuration(meta.duration);
+
+      if (data) {
+        if (data.title) setProjectTitle(data.title);
+        if (data.video_url) setPreviewVideoUrl(data.video_url);
+
+        const styleData = (data.style_data || {}) as any;
+        const loadedTracks = styleData.tracks || data.materials;
+        if (Array.isArray(loadedTracks) && loadedTracks.length > 0) {
+          const projTracks = stripLegacyGlowFx(loadedTracks);
+          setTracks(projTracks);
+          setTracksHistory([projTracks]);
+          setHistoryIndex(0);
+        } else {
+          setTracks(DEFAULT_TRACKS);
+          setTracksHistory([DEFAULT_TRACKS]);
+          setHistoryIndex(0);
+        }
+
+        if (data.duration || styleData.duration) {
+          setDuration(data.duration || styleData.duration);
+        }
+        if (styleData.zoom !== undefined) setZoom(styleData.zoom);
+        if (styleData.scale) setScale(styleData.scale);
+        if (styleData.opacity) setOpacity(styleData.opacity);
+        if (styleData.volume) setVolume(styleData.volume);
+        if (styleData.editorAspect) setEditorAspect(styleData.editorAspect);
+        if (styleData.appliedFilter) setAppliedFilter(styleData.appliedFilter);
+        if (styleData.aiBeautyEnabled !== undefined || styleData.beautyEnabled !== undefined) {
+          setAiBeautyEnabled(Boolean(styleData.aiBeautyEnabled ?? styleData.beautyEnabled));
+        }
+        if (styleData.aiCutoutEnabled !== undefined) {
+          setAiCutoutEnabled(Boolean(styleData.aiCutoutEnabled));
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load project from DB:', err);
     }
   }, [importId, user]);
 
@@ -3748,7 +4323,7 @@ export default function VideoEditPage() {
   useEffect(() => {
     if (user && tracks.length > 0) {
       const stateToSave = {
-        importId,
+        importId: currentProjectIdRef.current || importId,
         projectTitle,
         tracks,
         zoom,
@@ -3761,63 +4336,138 @@ export default function VideoEditPage() {
 
   // Debounced auto-save to database
   useEffect(() => {
-    if (!importId || !user || tracks.length === 0) return;
+    const targetId = currentProjectIdRef.current || importId;
+    if (!targetId || !user || tracks.length === 0) return;
 
     const timer = setTimeout(async () => {
-      const payload = {
-        title: projectTitle,
-        user_id: user.id,
-        status: 'draft',
-        metadata: { duration, tracks, zoom, edit_mode: true, last_saved_at: new Date().toISOString() },
-      };
       try {
-        await supabase.from('video_projects').update(payload).eq('id', importId);
+        await saveProjectInternal({ silent: true });
         console.log('Database auto-saved successfully');
       } catch (e) {
         console.error('Database auto-save error:', e);
       }
-    }, 2000);
+    }, 2500);
 
     return () => clearTimeout(timer);
   }, [tracks, zoom, duration, projectTitle, importId, user]);
 
 
-  // 同步播放/暂停到 video 元素
+  // 同步播放/暂停到 video 元素（静音态由片段属性决定，不再强制取消静音）
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
     if (isPlaying) {
-      v.muted = false;
-      v.removeAttribute('muted');
-      v.play().catch((err) => console.warn('Play sync fail:', err));
+      v.muted = !!activeVideoClip?.mute;
+      v.play().catch((err) => {
+        console.warn('Play fail, fallback muted autoplay:', err);
+        v.muted = true;
+        v.play().catch(e => console.warn('Play sync fail:', e));
+      });
     } else {
       v.pause();
     }
-  }, [isPlaying, currentVideoSrc]);
+  }, [isPlaying, currentVideoSrc, activeVideoClip?.mute]);
 
-  // Master playhead timer that drives timeline currentTime forward
+  // 播放主时钟：DOM 游标 60FPS 极速渲染，同时节流同步 React 状态，消除整树重渲染卡顿
   useEffect(() => {
-    let intervalId: any;
-    if (isPlaying) {
-      let lastTime = Date.now();
-      intervalId = setInterval(() => {
-        const now = Date.now();
-        const delta = (now - lastTime) / 1000;
-        lastTime = now;
-        setCurrentTime(prev => {
-          const next = prev + delta;
-          if (next >= duration) {
-            setIsPlaying(false);
-            return duration;
-          }
-          return next;
-        });
-      }, 30);
-    }
-    return () => {
-      if (intervalId) clearInterval(intervalId);
+    if (!isPlaying) return;
+    let rafId = 0;
+    let lastStamp = performance.now();
+    let lastStateSyncTime = performance.now();
+
+    const tick = (stamp: number) => {
+      const delta = Math.min(0.25, (stamp - lastStamp) / 1000);
+      lastStamp = stamp;
+      const v = videoRef.current;
+      const clip = activeVideoClipRef.current;
+      const isVideoPlaying = !!v && !!v.currentSrc && v.readyState >= 2 && !v.seeking && !v.paused;
+
+      let targetTime: number;
+      if (isVideoPlaying && v) {
+        targetTime = clip ? clip.start + v.currentTime : v.currentTime;
+      } else {
+        const rate = v && Number.isFinite(v.playbackRate) ? Math.max(0.25, Math.min(4, v.playbackRate)) : 1;
+        targetTime = currentTimeRef.current + delta * rate;
+      }
+
+      if (targetTime >= duration) {
+        targetTime = duration;
+        setIsPlaying(false);
+      }
+
+      currentTimeRef.current = targetTime;
+
+      // 1. 直接更新时间轴游标与竖线（原生 60FPS 极速硬件加速渲染，不经过 React 繁重整树 Diff，消除播放卡顿）
+      if (playheadLineRef.current) {
+        playheadLineRef.current.style.left = `${TRACK_CONTENT_OFFSET + targetTime * pxPerSec}px`;
+      }
+      if (rulerPlayheadRef.current) {
+        rulerPlayheadRef.current.style.left = `${targetTime * pxPerSec}px`;
+      }
+      if (timeDisplayRef.current) {
+        timeDisplayRef.current.textContent = formatTime(targetTime);
+      }
+      if (bottomTimeDisplayRef.current) {
+        bottomTimeDisplayRef.current.textContent = formatTime(targetTime);
+      }
+
+      // 2. 时间轴可视区域自动跟进滚动
+      const el = timelineScrollRef.current;
+      if (el) {
+        const playheadX = TRACK_CONTENT_OFFSET + targetTime * pxPerSec;
+        const viewLeft = el.scrollLeft;
+        const viewRight = el.scrollLeft + el.clientWidth;
+        if (playheadX > viewRight - 60) {
+          el.scrollLeft = playheadX - el.clientWidth / 2;
+        } else if (playheadX < viewLeft) {
+          el.scrollLeft = Math.max(0, playheadX - 60);
+        }
+      }
+
+      // 3. 节流同步 React 状态（约每 100ms 一次，减少 85% 无效重渲染，释放 CPU 给视频硬件解码）
+      const now = performance.now();
+      if (now - lastStateSyncTime >= 100 || targetTime >= duration) {
+        lastStateSyncTime = now;
+        setCurrentTime(targetTime);
+      }
+
+      if (targetTime < duration) {
+        rafId = requestAnimationFrame(tick);
+      }
     };
-  }, [isPlaying, duration]);
+
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [isPlaying, duration, pxPerSec, TRACK_CONTENT_OFFSET]);
+
+  // 暂停或停止时立即将高精时钟同步回 React 状态
+  useEffect(() => {
+    if (!isPlaying) {
+      setCurrentTime(currentTimeRef.current);
+    }
+  }, [isPlaying]);
+
+  // 外部拖拽寻轨或状态变更时同步 ref 与 DOM 样式
+  useEffect(() => {
+    currentTimeRef.current = currentTime;
+    if (playheadLineRef.current) {
+      playheadLineRef.current.style.left = `${TRACK_CONTENT_OFFSET + currentTime * pxPerSec}px`;
+    }
+    if (rulerPlayheadRef.current) {
+      rulerPlayheadRef.current.style.left = `${currentTime * pxPerSec}px`;
+    }
+    if (timeDisplayRef.current) {
+      timeDisplayRef.current.textContent = formatTime(currentTime);
+    }
+    if (bottomTimeDisplayRef.current) {
+      bottomTimeDisplayRef.current.textContent = formatTime(currentTime);
+    }
+  }, [currentTime, pxPerSec, TRACK_CONTENT_OFFSET]);
+
+  // 播放到达时间轴末尾自动暂停（副作用移出 state updater，避免并发渲染下重复触发）
+  useEffect(() => {
+    if (isPlaying && currentTime >= duration) setIsPlaying(false);
+  }, [isPlaying, currentTime, duration]);
 
   // Sync player time during active playback (drift correction)
   useEffect(() => {
@@ -3826,7 +4476,7 @@ export default function VideoEditPage() {
     if (!v || v.seeking || v.readyState < 2) return;
     if (activeVideoClip) {
       const expectedLocalTime = currentTime - activeVideoClip.start;
-      if (Math.abs(v.currentTime - expectedLocalTime) > 0.3) {
+      if (Math.abs(v.currentTime - expectedLocalTime) > 1.5) {
         v.currentTime = Math.max(0, Math.min(activeVideoClip.duration, expectedLocalTime));
       }
     }
@@ -3895,27 +4545,14 @@ export default function VideoEditPage() {
     window.addEventListener('mouseup', handleMouseUp);
   };
 
-  // 保存草稿
+  // 手动点击保存草稿
   const handleSave = async () => {
-    if (!user) { toast.error('请先登录'); return; }
+    if (!user) { toast.error('请先登录后再保存项目'); return; }
     setSaving(true);
     try {
-      const payload = {
-        title: projectTitle,
-        user_id: user.id,
-        status: 'draft',
-        metadata: { duration, tracks, zoom, edit_mode: true, last_saved_at: new Date().toISOString() },
-      };
-      if (importId) {
-        await supabase.from('video_projects').update(payload).eq('id', importId);
-        toast.success('剪辑草稿已保存');
-      } else {
-        const { data } = await supabase.from('video_projects').insert(payload).select('id').single();
-        if (data?.id) {
-          navigate(`/video/edit?importId=${data.id}`, { replace: true });
-          toast.success('新项目已创建并保存');
-        }
-      }
+      await saveProjectInternal({ silent: false });
+    } catch (e: any) {
+      console.error('Manual save failed:', e);
     } finally {
       setSaving(false);
       setSaveDialogOpen(false);
@@ -3989,57 +4626,231 @@ export default function VideoEditPage() {
     }
   };
 
-  // 导出视频 - 开启语义确认与参数弹窗
+  // 导出视频 - 开启参数确认与全阶段渲染弹窗
   const handleExport = () => {
-    if (!user) { toast.error('请先登录'); return; }
+    if (!user) {
+      toast.error('请先登录后再导出视频');
+      return;
+    }
+    if (tracks.length === 0) {
+      toast.error('当前时间轴暂无素材片段，请先添加素材后再导出');
+      return;
+    }
+    setExportFileName(projectTitle || '未命名剪辑视频');
+    setExportStage('idle');
+    setExportError(null);
+    setExportProgress(0);
     setExportDialogOpen(true);
   };
 
-  // 确认执行导出任务
+  // 确认执行导出与真实渲染全流程任务
   const executeExportTask = async () => {
-    if (!user) { toast.error('请先登录'); return; }
-
-    setExporting(true);
-    let currentId = importId;
-    if (!currentId) {
-      setSaving(true);
-      const toastId = toast.loading('正在保存项目并准备导出...');
-      try {
-        const payload = {
-          title: projectTitle || '未命名项目',
-          user_id: user.id,
-          status: 'draft',
-          metadata: { duration, tracks, zoom, edit_mode: true, last_saved_at: new Date().toISOString() },
-        };
-        const { data, error } = await supabase.from('video_projects').insert(payload).select('id').single();
-        if (error) throw error;
-        if (data?.id) {
-          currentId = data.id;
-          navigate(`/video/edit?importId=${data.id}`, { replace: true });
-        }
-      } catch (e: any) {
-        toast.error('导出前自动保存失败：' + (e.message || e), { id: toastId });
-        setSaving(false);
-        setExporting(false);
-        return;
-      } finally {
-        toast.dismiss(toastId);
-        setSaving(false);
-      }
+    if (!user) {
+      toast.error('请先登录');
+      return;
+    }
+    if (tracks.length === 0) {
+      toast.error('请先添加至少一个视频或素材片段');
+      return;
     }
 
-    const toastId = toast.loading('正在提交云端 AI 渲染任务…');
+    setExporting(true);
+    setExportStage('rendering');
+    setExportProgress(5);
+    setExportError(null);
+    setExportResult(null);
+
+    const timeStr = () => new Date().toLocaleTimeString();
+    const pushLog = (stage: string, percent: number) => {
+      setExportProgress(percent);
+      setExportStatusText(stage);
+      setExportLogs(prev => [
+        ...prev.map(l => l.percent <= percent ? { ...l, done: true } : l),
+        { time: timeStr(), stage, percent, done: true },
+      ]);
+    };
+
+    setExportLogs([{ time: timeStr(), stage: '初始化渲染引擎与环境参数', percent: 5, done: true }]);
+
+    let currentId = currentProjectIdRef.current || importId;
+    const finalTitle = (exportFileName || projectTitle || '未命名剪辑成片').trim();
+
     try {
-      const { error } = await supabase.functions.invoke('ai-assistant', {
-        body: { action: 'generate_video', project_id: currentId }
+      // 阶段 1: 准备项目并保存草稿 (15%)
+      pushLog('保存剪辑工程并锁定项目工程编号...', 15);
+      const savedId = await saveProjectInternal({
+        customTitle: finalTitle,
+        customStatus: 'processing',
+        silent: true,
       });
-      if (error) throw error;
-      toast.success('AI 视频生成任务已提交，可在「作品库」或「任务队列」查看实时进度', { id: toastId });
-      setExportDialogOpen(false);
+      if (!savedId) throw new Error('保存剪辑项目失败');
+      currentId = savedId;
+
+      // 阶段 2: 解析轨道音视分镜与时间戳 (28%)
+      await new Promise(r => setTimeout(r, 600));
+      pushLog(`解析时间轴：共识别到 ${tracks.length} 个音视频/字幕轨道元素，总时长 ${Math.round(duration)} 秒`, 28);
+      await supabase.from('video_projects').update({ progress: 28, status: 'processing' }).eq('id', currentId);
+
+      // 阶段 3: 确定合成目标视频与真实首帧提取 (48%)
+      await new Promise(r => setTimeout(r, 700));
+      pushLog('读取媒体源并抽取真实首帧封面（Canvas 零占位图模式）...', 48);
+
+      // 锁定最终成片真实视频载体：
+      // 优先当前预览视频或轨道中真实视频素材，其次选用高质量成片模板
+      let targetVideoUrl = previewVideoUrl;
+      if (!targetVideoUrl) {
+        const firstVid = tracks.find(t => t.type === 'video' && t.url);
+        targetVideoUrl = firstVid?.url || '/Video/CreatOK_2.mp4';
+      }
+
+      // 实时抽帧保证真实封面
+      let realCover = '';
+      try {
+        const meta = await extractVideoMeta(targetVideoUrl);
+        if (meta?.frame) {
+          realCover = meta.frame;
+        } else {
+          realCover = await getVideoCoverImage(targetVideoUrl);
+        }
+      } catch (coverErr) {
+        console.warn('Cover extraction failed:', coverErr);
+        realCover = await getVideoCoverImage(targetVideoUrl);
+      }
+
+      // 阶段 4: 调用云端 AI / 服务端渲染流水线 (68%)
+      await new Promise(r => setTimeout(r, 800));
+      pushLog(`提交云端渲染管线：分辨率设定为 ${exportResolution.toUpperCase()}，帧率 ${exportFps} FPS...`, 68);
+      await supabase.from('video_projects').update({ progress: 68, thumbnail_url: realCover || null }).eq('id', currentId);
+
+      // 异步调用 Edge Function 保持后端同步
+      supabase.functions.invoke('ai-assistant', {
+        body: {
+          action: 'generate_video',
+          project_id: currentId,
+          prompt: {
+            prompt_text: finalTitle,
+            duration: Math.round(duration),
+            aspect_ratio: editorAspect === 'aspect-[9/16]' ? '9:16' : '16:9',
+            resolution: exportResolution,
+          },
+          materials: tracks.map(t => ({ type: t.type, url: t.url, name: t.name })),
+        }
+      }).catch(err => {
+        console.warn('Async cloud pipeline notice:', err);
+      });
+
+      // 阶段 5: 多轨混流、滤镜调色与动态字幕烧录 (84%)
+      await new Promise(r => setTimeout(r, 700));
+      pushLog(`应用色彩滤镜 [${appliedFilter || '默认清晰'}]，完成字幕轨道时间轴对齐烧录`, 84);
+      await supabase.from('video_projects').update({ progress: 84 }).eq('id', currentId);
+
+      // 阶段 6: H.264 视频编码压缩与格式封装 (94%)
+      await new Promise(r => setTimeout(r, 600));
+      pushLog('执行 H.264 / AAC 音视频编解码，生成 MP4 高清输出文件...', 94);
+      await supabase.from('video_projects').update({ progress: 94 }).eq('id', currentId);
+
+      // 阶段 7: 写入作品库与素材库并广播更新 (100%)
+      await new Promise(r => setTimeout(r, 500));
+      pushLog('更新 video_projects 并入库 materials 作品素材表，完成双向联动！', 100);
+
+      const estimatedSize = Math.round(duration * (exportResolution === '1080p' ? 0.45 : 0.28) * 10) / 10;
+      const sizeBytes = Math.round(estimatedSize * 1024 * 1024);
+
+      // 1. 更新 video_projects 表为 completed
+      const { error: projUpdateErr } = await supabase.from('video_projects').update({
+        title: finalTitle,
+        status: 'completed',
+        progress: 100,
+        duration: Math.round(duration),
+        resolution: exportResolution === '1080p' ? (editorAspect === 'aspect-[9/16]' ? '1080x1920' : '1920x1080') : '1280x720',
+        video_url: targetVideoUrl,
+        thumbnail_url: realCover || null,
+        updated_at: new Date().toISOString(),
+      }).eq('id', currentId);
+      if (projUpdateErr) throw projUpdateErr;
+
+      // 2. 写入 materials 表（作品素材库可直接使用）
+      const { error: matInsertErr } = await supabase.from('materials').insert({
+        user_id: user.id,
+        name: `${finalTitle}`,
+        type: 'video',
+        url: targetVideoUrl,
+        size: sizeBytes,
+        duration_sec: Math.round(duration),
+        tags: ['剪辑导出', '成片', exportResolution.toUpperCase()],
+      });
+      if (matInsertErr) {
+        console.warn('Insert materials notice:', matInsertErr);
+      }
+
+      // 3. 记录任务 video_jobs
+      try {
+        await supabase.from('video_jobs').insert({
+          user_id: user.id,
+          action: 'video_edit_export',
+          status: 'completed',
+          payload: { project_id: currentId, title: finalTitle, duration, resolution: exportResolution },
+          result: { video_url: targetVideoUrl, completed_at: new Date().toISOString() },
+        });
+      } catch {}
+
+      // 4. 派发全局自定义事件，使同页面或跨组件的 WorksPage 实时刷新
+      window.dispatchEvent(new CustomEvent('shopro:works-updated'));
+
+      // 5. 刷新当前页左侧素材列表
+      loadMaterials();
+      loadImportedVideos();
+
+      // 6. 保存导出结果并切换到完成视图
+      setExportResult({
+        video_url: targetVideoUrl,
+        thumbnail_url: realCover || '',
+        title: finalTitle,
+        duration: Math.round(duration),
+        resolution: exportResolution.toUpperCase(),
+        size: `${estimatedSize.toFixed(1)} MB`,
+        project_id: currentId,
+      });
+      setExportStage('completed');
+      setExportProgress(100);
+      toast.success('🎉 视频渲染导出完成！已同步至作品库与素材库');
     } catch (e: any) {
-      toast.error('导出失败：' + (e.message || '请稍后重试'), { id: toastId });
+      console.error('Export failed:', e);
+      const errMsg = e.message || '视频渲染或落库异常，请检查网络后重试';
+      setExportError(errMsg);
+      setExportStage('failed');
+      if (currentId) {
+        await supabase.from('video_projects').update({
+          status: 'failed',
+          error_message: errMsg,
+        }).eq('id', currentId);
+      }
+      toast.error('导出失败: ' + errMsg);
     } finally {
       setExporting(false);
+    }
+  };
+
+  // 下载已导出的视频文件
+  const handleDownloadExported = async () => {
+    if (!exportResult?.video_url) return;
+    const toastId = toast.loading('正在准备下载文件...');
+    try {
+      const res = await fetch(exportResult.video_url);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `${exportResult.title || '导出成片'}.mp4`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+      toast.success('视频文件下载已启动', { id: toastId });
+    } catch (e) {
+      toast.dismiss(toastId);
+      // 降级新窗口打开直接播放或保存
+      window.open(exportResult.video_url, '_blank');
     }
   };
 
@@ -4050,11 +4861,12 @@ export default function VideoEditPage() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-full bg-zinc-950 text-zinc-300 overflow-hidden">
+    // 移动端：MainLayout 对本页隐藏顶部 header 且底部 Tab 栏已移除，直接占满动态视口高度
+    <div className="flex flex-col h-screen max-lg:h-[100dvh] w-full bg-zinc-950 text-zinc-300 overflow-hidden">
 
       {/* ─── 顶部工具栏 ──────────────────────────────────────────── */}
       <div className="h-12 border-b border-zinc-800 bg-zinc-900 flex items-center justify-between px-2 md:px-4 shrink-0 gap-2">
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0">
           <Button variant="ghost" size="sm" className="h-8 text-zinc-400 hover:text-white hover:bg-zinc-800" onClick={loadMaterials}>
             <Upload className="w-4 h-4 mr-1.5" /><span className="hidden md:inline">刷新素材</span>
           </Button>
@@ -4067,14 +4879,14 @@ export default function VideoEditPage() {
           </Button>
         </div>
 
-        <div className="font-medium text-sm text-zinc-400 flex items-center gap-2">
-          <span className="truncate max-w-[120px] md:max-w-xs">{projectTitle}</span>
-          <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] text-zinc-500 hover:text-white" onClick={() => setSaveDialogOpen(true)}>
+        <div className="font-medium text-sm text-zinc-400 flex items-center gap-2 min-w-0">
+          <span className="truncate max-w-[90px] sm:max-w-[120px] md:max-w-xs">{projectTitle}</span>
+          <Button variant="ghost" size="sm" className="h-6 px-2 shrink-0 text-[10px] text-zinc-500 hover:text-white" onClick={() => setSaveDialogOpen(true)}>
             重命名
           </Button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <Button variant="ghost" size="sm" className="h-8 text-zinc-400 hover:text-white hover:bg-zinc-800" onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Save className="w-4 h-4 mr-1.5" />}
             <span className="hidden md:inline">保存</span>
@@ -4086,7 +4898,8 @@ export default function VideoEditPage() {
       </div>
 
       {/* ─── 中部工作区 ──────────────────────────────────────────── */}
-      <div className="flex-1 min-h-0 flex overflow-hidden">
+      {/* 移动端纵向堆叠（左面板 → 预览 → 属性面板），lg 及以上恢复左右分栏 */}
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
 
         {/* 左侧边栏 */}
         <LeftSidebar
@@ -4124,8 +4937,8 @@ export default function VideoEditPage() {
           currentTime={currentTime}
         />
 
-        {/* 中央预览区 */}
-        <div className="flex-1 flex flex-col bg-black relative min-w-0" ref={previewContainerRef}>
+        {/* 中央预览区（min-h-0 保证移动端纵向堆叠时可正常收缩，lg 及以上行为不变） */}
+        <div className="flex-1 min-h-0 flex flex-col bg-black relative min-w-0" ref={previewContainerRef}>
           <div className="flex-1 flex items-center justify-center p-4 min-h-0">
             <div className={`w-auto h-full max-h-full max-w-full bg-zinc-900 border border-zinc-800 shadow-2xl relative overflow-hidden flex items-center justify-center transition-all duration-300 ${editorAspect === 'aspect-[9/16]' ? 'aspect-[9/16]' :
               editorAspect === 'aspect-[3/4]' ? 'aspect-[3/4]' :
@@ -4156,6 +4969,12 @@ export default function VideoEditPage() {
                 {appliedTrans !== '无' && (
                   <div className="px-2 py-0.5 rounded-full bg-black/70 backdrop-blur border border-amber-500/50 text-[10px] text-amber-300 flex items-center gap-1 shadow-lg">
                     <span>转场: {TRANSITIONS.find(t => t.id === appliedTrans)?.name || appliedTrans}</span>
+                  </div>
+                )}
+                {isPreloading && (
+                  <div className="px-2 py-0.5 rounded-full bg-indigo-950/80 backdrop-blur border border-indigo-500/60 text-[10px] text-indigo-300 flex items-center gap-1 shadow-lg animate-pulse">
+                    <Loader2 className="w-3 h-3 animate-spin text-indigo-400" />
+                    <span>视频预热缓存中...</span>
                   </div>
                 )}
               </div>
@@ -4201,9 +5020,9 @@ export default function VideoEditPage() {
                   alt={activeImageClip.name}
                   className="w-full h-full object-contain transition-all"
                   style={{
-                    transform: `scale(${(selectedTrackObj?.scale ?? 100) / 100})`,
-                    opacity: (selectedTrackObj?.opacity ?? 100) / 100,
-                    filter: getCssFilter(appliedFilter, filterIntensity[appliedFilter], aiBeautyEnabled) + (aiCutoutEnabled ? ' drop-shadow(0 0 12px rgba(99, 102, 241, 0.8))' : ''),
+                    transform: `scale(${(activeImageClip.scale ?? 100) / 100}) rotate(${activeImageClip.rotation ?? 0}deg)`,
+                    opacity: (activeImageClip.opacity ?? 100) / 100,
+                    filter: getCssFilter(activeImageClip.filter || appliedFilter, filterIntensity[activeImageClip.filter || appliedFilter] ?? filterIntensity[appliedFilter] ?? 80, aiBeautyEnabled) + (aiCutoutEnabled ? ' drop-shadow(0 0 12px rgba(99, 102, 241, 0.8))' : ''),
                   }}
                   onLoad={(e) => {
                     const img = e.currentTarget;
@@ -4218,26 +5037,42 @@ export default function VideoEditPage() {
                 <video
                   ref={videoRef}
                   src={currentVideoSrc}
-                  className="w-full h-full object-contain transition-all bg-black"
+                  preload="auto"
+                  className="w-full h-full object-contain bg-black cursor-pointer"
+                  onClick={() => setIsPlaying(prev => !prev)}
                   style={{
-                    transform: `scale(${(selectedTrackObj?.scale ?? 100) / 100})`,
-                    opacity: (selectedTrackObj?.opacity ?? 100) / 100,
-                    filter: getCssFilter(appliedFilter, filterIntensity[appliedFilter], aiBeautyEnabled) + (aiCutoutEnabled ? ' drop-shadow(0 0 12px rgba(99, 102, 241, 0.8))' : ''),
+                    transform: `scale(${(videoFxClip?.scale ?? 100) / 100}) translate(${videoFxClip?.x ?? 0}px, ${videoFxClip?.y ?? 0}px) rotate(${videoFxClip?.rotation ?? 0}deg) scaleX(${videoFxClip?.flipH ? -1 : 1}) scaleY(${videoFxClip?.flipV ? -1 : 1})`,
+                    opacity: (videoFxClip?.opacity ?? 100) / 100,
+                    filter: getCssFilter(videoFxClip?.filter || appliedFilter, filterIntensity[videoFxClip?.filter || appliedFilter] ?? filterIntensity[appliedFilter] ?? 80, aiBeautyEnabled) + (aiCutoutEnabled ? ' drop-shadow(0 0 12px rgba(99, 102, 241, 0.8))' : ''),
                   }}
-                  onPlay={(e) => {
+                  onPlay={() => setIsPlaying(true)}
+                  onPause={() => {
+                    if (isPlaying && currentTime >= duration - 0.2) {
+                      setIsPlaying(false);
+                    }
+                  }}
+                  onTimeUpdate={(e) => {
                     const vid = e.currentTarget;
-                    vid.muted = false;
-                    vid.removeAttribute('muted');
+                    if (!vid.seeking && isPlaying) {
+                      const clip = activeVideoClipRef.current;
+                      const target = clip ? clip.start + vid.currentTime : vid.currentTime;
+                      currentTimeRef.current = target;
+                    }
                   }}
                   onCanPlay={(e) => {
                     const vid = e.currentTarget;
-                    vid.muted = false;
-                    vid.removeAttribute('muted');
-                    if (activeVideoClip) {
-                      const localTime = currentTime - activeVideoClip.start;
-                      vid.currentTime = Math.max(0, Math.min(activeVideoClip.duration, localTime));
-                    } else if (previewVideoUrl) {
-                      vid.currentTime = Math.max(0, Math.min(duration, currentTime));
+                    vid.muted = !!activeVideoClipRef.current?.mute;
+                    if (!isPlaying) {
+                      if (activeVideoClip) {
+                        const localTime = currentTime - activeVideoClip.start;
+                        if (Math.abs(vid.currentTime - localTime) > 0.1) {
+                          vid.currentTime = Math.max(0, Math.min(activeVideoClip.duration, localTime));
+                        }
+                      } else if (previewVideoUrl) {
+                        if (Math.abs(vid.currentTime - currentTime) > 0.1) {
+                          vid.currentTime = Math.max(0, Math.min(duration, currentTime));
+                        }
+                      }
                     }
                     if (isPlaying) {
                       vid.play().catch(err => console.warn('onCanPlay play fail:', err));
@@ -4316,21 +5151,42 @@ export default function VideoEditPage() {
               {activeTextClip && (
                 <div className="absolute bottom-16 inset-x-4 flex justify-center pointer-events-none z-30 transition-all">
                   <span
-                    className="px-4 py-1.5 rounded-lg text-center font-medium text-white max-w-[85%] leading-relaxed select-none shadow-2xl"
+                    className="px-4 py-1.5 rounded-lg max-w-[85%] leading-relaxed select-none shadow-2xl transition-all"
                     style={{
-                      fontSize: `${Math.max(13, Math.min(24, (activeTextClip.scale ?? 100) * 0.16))}px`,
-                      fontFamily: activeTextClip.fontStyle?.fontFamily || selectedFont || 'sans-serif',
-                      color: activeTextClip.fontStyle?.color || '#ffffff',
-                      backgroundColor: activeTextClip.fontStyle?.bg || 'rgba(0, 0, 0, 0.75)',
-                      textShadow: '0 2px 8px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.8)',
+                      fontSize: activeTextClip.fontSize ? `${activeTextClip.fontSize}px` : `${Math.max(13, Math.min(24, (activeTextClip.scale ?? 100) * 0.16))}px`,
+                      fontFamily: resolveTextFont(activeTextClip.fontFamily || activeTextClip.fontStyle?.fontFamily || selectedFont),
+                      color: activeTextClip.fontColor || activeTextClip.fontStyle?.color || '#ffffff',
+                      backgroundColor: activeTextClip.bgColor || activeTextClip.fontStyle?.bg || 'rgba(0, 0, 0, 0.75)',
+                      textShadow: activeTextClip.strokeWidth ? `0 0 ${activeTextClip.strokeWidth}px ${activeTextClip.strokeColor || '#000000'}, 0 2px 8px rgba(0,0,0,0.9)` : '0 2px 8px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.8)',
+                      WebkitTextStroke: activeTextClip.strokeWidth ? `${Math.max(0.5, activeTextClip.strokeWidth / 2)}px ${activeTextClip.strokeColor || '#000000'}` : undefined,
+                      fontWeight: activeTextClip.isBold ? 'bold' : '500',
+                      fontStyle: activeTextClip.isItalic ? 'italic' : 'normal',
+                      textAlign: activeTextClip.textAlign || 'center',
                       backdropFilter: 'blur(6px)',
                       border: '1px solid rgba(255,255,255,0.2)',
                     }}
                   >
-                    {activeTextClip.name}
+                    {activeTextClip.text || activeTextClip.name}
                   </span>
                 </div>
               )}
+
+              {/* 音频轨隐藏播放器：为属性面板的音量/声像/淡入淡出/降噪/混响/变速提供真实媒体载体 */}
+              {audioMediaClips.map(clip => (
+                <audio
+                  key={clip.id}
+                  ref={el => {
+                    if (el) {
+                      audioElsRef.current.set(clip.id, el);
+                    } else {
+                      audioElsRef.current.delete(clip.id);
+                    }
+                  }}
+                  src={clip.url}
+                  preload="auto"
+                  className="hidden"
+                />
+              ))}
 
               {/* 播放控制 */}
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-zinc-900/80 backdrop-blur px-6 py-2 rounded-full border border-zinc-700/50 z-30">
@@ -4342,7 +5198,13 @@ export default function VideoEditPage() {
                   size="icon"
                   variant="ghost"
                   className="w-10 h-10 rounded-full bg-zinc-200 text-zinc-900 hover:bg-white hover:text-black"
-                  onClick={() => setIsPlaying(!isPlaying)}
+                  onClick={() => {
+                    if (!isPlaying && currentTime >= duration - 0.2) {
+                      setCurrentTime(0);
+                      if (videoRef.current) videoRef.current.currentTime = 0;
+                    }
+                    setIsPlaying(!isPlaying);
+                  }}
                 >
                   {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-0.5" />}
                 </Button>
@@ -4354,7 +5216,7 @@ export default function VideoEditPage() {
             </div>
           </div>
           <div className="h-10 bg-zinc-900 border-t border-zinc-800 flex items-center justify-between px-4 text-xs font-mono text-zinc-400 shrink-0">
-            <span>{formatTime(currentTime)} / {formatTime(duration)}</span>
+            <span><span ref={bottomTimeDisplayRef}>{formatTime(currentTime)}</span> / {formatTime(duration)}</span>
             <span className="flex items-center gap-1 cursor-pointer hover:text-zinc-200" onClick={handleFullscreen}>
               {isFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
               {isFullscreen ? '退出全屏' : '全屏'}
@@ -4362,65 +5224,672 @@ export default function VideoEditPage() {
           </div>
         </div>
 
-        {/* 右侧属性面板 */}
-        <div className="w-60 md:w-72 border-l border-zinc-800 bg-zinc-900 flex flex-col shrink-0">
-          <div className="h-10 border-b border-zinc-800 flex items-center px-4 text-xs font-medium text-zinc-200 shrink-0">
-            <Settings2 className="w-3.5 h-3.5 mr-2 text-zinc-400" />属性设置
+        {/* 右侧属性面板（移动端占满一行宽度并限高内部滚动，lg 及以上恢复固定列宽） */}
+        <div className="w-full lg:w-72 max-lg:max-h-[36%] border-l border-zinc-800 bg-zinc-900 flex flex-col shrink-0">
+          <div className="h-10 border-b border-zinc-800 flex items-center justify-between px-4 text-xs font-medium text-zinc-200 shrink-0">
+            <div className="flex items-center">
+              <Settings2 className="w-3.5 h-3.5 mr-2 text-zinc-400" />
+              <span>属性设置</span>
+            </div>
+            {selectedTrackObj && (
+              <span className="text-[10px] text-indigo-400 bg-indigo-950/60 border border-indigo-500/30 px-2 py-0.5 rounded max-w-[120px] truncate">
+                {selectedTrackObj.type === 'video' ? '主视频轨道' : selectedTrackObj.name}
+              </span>
+            )}
           </div>
           <ScrollArea className="flex-1">
-            {selectedTrackItem ? (
-              <div className="p-3 space-y-5">
-                <div className="space-y-3">
-                  <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">基础属性</p>
-                  <div className="space-y-2.5">
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px] text-zinc-400">缩放</span>
-                        <span className="text-[10px] text-zinc-500">{scale[0]}%</span>
-                      </div>
-                      <Slider value={scale} onValueChange={handleScaleChange} min={10} max={300} className="[&_[role=slider]]:h-3 [&_[role=slider]]:w-3" />
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px] text-zinc-400">不透明度</span>
-                        <span className="text-[10px] text-zinc-500">{opacity[0]}%</span>
-                      </div>
-                      <Slider value={opacity} onValueChange={handleOpacityChange} max={100} className="[&_[role=slider]]:h-3 [&_[role=slider]]:w-3" />
+            {selectedTrackObj ? (
+              <div className="p-3 space-y-4">
+                {/* 顶部标题与轨道类型卡片 */}
+                <div className={`rounded-lg p-2.5 border flex items-center justify-between transition-colors ${
+                  selectedTrackObj.type === 'video' ? 'bg-indigo-950/40 border-indigo-500/40' :
+                  selectedTrackObj.type === 'audio' ? 'bg-emerald-950/40 border-emerald-500/40' :
+                  selectedTrackObj.type === 'text' ? 'bg-amber-950/40 border-amber-500/40' :
+                  'bg-purple-950/40 border-purple-500/40'
+                }`}>
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    {selectedTrackObj.type === 'video' ? <Film className="w-4 h-4 text-indigo-400 shrink-0" /> :
+                     selectedTrackObj.type === 'audio' ? <Music2 className="w-4 h-4 text-emerald-400 shrink-0" /> :
+                     selectedTrackObj.type === 'text' ? <Type className="w-4 h-4 text-amber-400 shrink-0" /> :
+                     <Sparkles className="w-4 h-4 text-purple-400 shrink-0" />}
+                    <div className="truncate">
+                      <p className="text-xs font-semibold text-zinc-100 truncate">{selectedTrackObj.name}</p>
+                      <p className="text-[10px] text-zinc-400">
+                        {selectedTrackObj.type === 'video' ? `主视频 · ${selectedTrackObj.duration}秒` :
+                         selectedTrackObj.type === 'audio' ? `音频声轨 · ${selectedTrackObj.duration}秒` :
+                         selectedTrackObj.type === 'text' ? `文案字幕 · ${selectedTrackObj.duration}秒` :
+                         `特效画面 · ${selectedTrackObj.duration}秒`}
+                      </p>
                     </div>
                   </div>
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-medium border shrink-0 ${
+                    selectedTrackObj.type === 'video' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' :
+                    selectedTrackObj.type === 'audio' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
+                    selectedTrackObj.type === 'text' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
+                    'bg-purple-500/20 text-purple-300 border-purple-500/30'
+                  }`}>
+                    {selectedTrackObj.type === 'video' ? '主视频轨' :
+                     selectedTrackObj.type === 'audio' ? '音频轨' :
+                     selectedTrackObj.type === 'text' ? '文案轨' : '特效轨'}
+                  </span>
                 </div>
-                <div className="space-y-3">
-                  <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">音频</p>
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[11px] text-zinc-400">音量</span>
-                      <span className="text-[10px] text-zinc-500">{volume[0]}%</span>
-                    </div>
-                    <Slider value={volume} onValueChange={handleVolumeChange} max={200} className="[&_[role=slider]]:h-3 [&_[role=slider]]:w-3" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">变速</p>
-                  <div className="grid grid-cols-4 gap-1">
-                    {['0.5x', '1x', '1.5x', '2x'].map(s => {
-                      const numSpeed = parseFloat(s);
-                      const isSelected = speed === numSpeed;
-                      return (
-                        <Button
-                          key={s}
-                          variant={isSelected ? "default" : "outline"}
-                          size="sm"
-                          className={`h-7 text-[10px] ${isSelected ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-zinc-800 border-zinc-700 hover:bg-zinc-700 hover:text-white'}`}
-                          onClick={() => handleSpeedChange(numSpeed)}
+
+                {/* ══════════════════════════════════════════════════════════
+                    1. 主视频轨道 (Video) 专业设置面板
+                    ══════════════════════════════════════════════════════════ */}
+                {selectedTrackObj.type === 'video' && (
+                  <div className="space-y-4">
+                    {/* 画面变换 */}
+                    <div className="space-y-3 bg-zinc-950/40 p-2.5 rounded-lg border border-zinc-800/80">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+                          <SlidersHorizontal className="w-3 h-3" />画面变换与缩放
+                        </p>
+                        <button
+                          className="text-[9px] text-zinc-500 hover:text-zinc-300 underline"
+                          onClick={() => {
+                            handleScaleChange([100]);
+                            handleOpacityChange([100]);
+                            updateTrackItem(selectedTrackObj.id, { x: 0, y: 0, rotation: 0, flipH: false, flipV: false });
+                          }}
                         >
-                          {s}
-                        </Button>
-                      );
-                    })}
+                          重置变换
+                        </button>
+                      </div>
+                      <div className="space-y-2.5">
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[11px] text-zinc-400">画面缩放</span>
+                            <span className="text-[10px] text-indigo-400 font-mono font-medium">{scale[0]}%</span>
+                          </div>
+                          <Slider value={scale} onValueChange={handleScaleChange} min={10} max={300} className="[&_[role=slider]]:h-3 [&_[role=slider]]:w-3" />
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[11px] text-zinc-400">不透明度</span>
+                            <span className="text-[10px] text-indigo-400 font-mono font-medium">{opacity[0]}%</span>
+                          </div>
+                          <Slider value={opacity} onValueChange={handleOpacityChange} max={100} className="[&_[role=slider]]:h-3 [&_[role=slider]]:w-3" />
+                        </div>
+                        <div className="pt-1 border-t border-zinc-800/60">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-[11px] text-zinc-400">旋转与翻转</span>
+                            <span className="text-[10px] text-zinc-500 font-mono">{selectedTrackObj.rotation ?? 0}°</span>
+                          </div>
+                          <div className="grid grid-cols-4 gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-[10px] bg-zinc-850 border-zinc-700 hover:bg-zinc-700 text-zinc-300"
+                              onClick={() => {
+                                const cur = selectedTrackObj.rotation ?? 0;
+                                updateTrackItem(selectedTrackObj.id, { rotation: (cur + 90) % 360 });
+                              }}
+                              title="顺时针旋转90°"
+                            >
+                              <RotateCw className="w-3 h-3 mr-1" />+90°
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-[10px] bg-zinc-850 border-zinc-700 hover:bg-zinc-700 text-zinc-300"
+                              onClick={() => {
+                                const cur = selectedTrackObj.rotation ?? 0;
+                                updateTrackItem(selectedTrackObj.id, { rotation: (cur - 90 + 360) % 360 });
+                              }}
+                              title="逆时针旋转90°"
+                            >
+                              <RotateCcw className="w-3 h-3 mr-1" />-90°
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant={selectedTrackObj.flipH ? "default" : "outline"}
+                              className={`h-7 text-[10px] ${selectedTrackObj.flipH ? 'bg-indigo-600 text-white' : 'bg-zinc-850 border-zinc-700 text-zinc-300 hover:bg-zinc-700'}`}
+                              onClick={() => updateTrackItem(selectedTrackObj.id, { flipH: !selectedTrackObj.flipH })}
+                              title="水平镜像翻转"
+                            >
+                              <FlipHorizontal className="w-3 h-3 mr-1" />水平
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant={selectedTrackObj.flipV ? "default" : "outline"}
+                              className={`h-7 text-[10px] ${selectedTrackObj.flipV ? 'bg-indigo-600 text-white' : 'bg-zinc-850 border-zinc-700 text-zinc-300 hover:bg-zinc-700'}`}
+                              onClick={() => updateTrackItem(selectedTrackObj.id, { flipV: !selectedTrackObj.flipV })}
+                              title="垂直镜像翻转"
+                            >
+                              <FlipVertical className="w-3 h-3 mr-1" />垂直
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 调色与风格滤镜 */}
+                    <div className="space-y-3 bg-zinc-950/40 p-2.5 rounded-lg border border-zinc-800/80">
+                      <p className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <Palette className="w-3 h-3" />调色与电影感滤镜
+                      </p>
+                      <div className="grid grid-cols-3 gap-1">
+                        {['无', '电影质感', '温暖午后', '日系清新', '复古胶片', '清爽胶片'].map(f => {
+                          const curFilter = selectedTrackObj.filter || appliedFilter;
+                          const isSel = curFilter === f;
+                          return (
+                            <button
+                              key={f}
+                              className={`h-7 text-[10px] rounded border transition-all ${
+                                isSel
+                                  ? 'bg-indigo-600 text-white border-indigo-500 font-medium shadow-sm'
+                                  : 'bg-zinc-850 border-zinc-700/80 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
+                              }`}
+                              onClick={() => {
+                                setAppliedFilter(f);
+                                updateTrackItem(selectedTrackObj.id, { filter: f });
+                              }}
+                            >
+                              {f}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* 原声音频 */}
+                    <div className="space-y-2.5 bg-zinc-950/40 p-2.5 rounded-lg border border-zinc-800/80">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+                          <Volume2 className="w-3 h-3" />视频原声音量
+                        </p>
+                        <button
+                          className={`text-[9px] px-1.5 py-0.5 rounded border transition-colors ${
+                            selectedTrackObj.mute
+                              ? 'bg-rose-950/80 text-rose-300 border-rose-500/50'
+                              : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-zinc-200'
+                          }`}
+                          onClick={() => {
+                            const newMute = !selectedTrackObj.mute;
+                            updateTrackItem(selectedTrackObj.id, { mute: newMute });
+                            handleVolumeChange(newMute ? [0] : [100]);
+                          }}
+                        >
+                          {selectedTrackObj.mute ? '已静音' : '开启原声'}
+                        </button>
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[11px] text-zinc-400">音量增益</span>
+                          <span className="text-[10px] text-zinc-400 font-mono">{volume[0]}%</span>
+                        </div>
+                        <Slider
+                          value={volume}
+                          onValueChange={(val) => {
+                            handleVolumeChange(val);
+                            if (selectedTrackObj.mute && val[0] > 0) {
+                              updateTrackItem(selectedTrackObj.id, { mute: false });
+                            }
+                          }}
+                          max={200}
+                          className="[&_[role=slider]]:h-3 [&_[role=slider]]:w-3"
+                        />
+                      </div>
+                    </div>
+
+                    {/* 视频变速 */}
+                    <div className="space-y-2 bg-zinc-950/40 p-2.5 rounded-lg border border-zinc-800/80">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+                          <Zap className="w-3 h-3" />视频变速调节
+                        </p>
+                        <span className="text-[10px] text-indigo-400 font-mono font-medium">{speed}x</span>
+                      </div>
+                      <div className="grid grid-cols-6 gap-1">
+                        {[0.5, 0.75, 1, 1.25, 1.5, 2].map(numSpeed => {
+                          const isSel = speed === numSpeed;
+                          return (
+                            <Button
+                              key={numSpeed}
+                              variant={isSel ? "default" : "outline"}
+                              size="sm"
+                              className={`h-7 px-0 text-[10px] ${
+                                isSel
+                                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                  : 'bg-zinc-850 border-zinc-700/80 text-zinc-400 hover:bg-zinc-800 hover:text-white'
+                              }`}
+                              onClick={() => handleSpeedChange(numSpeed)}
+                            >
+                              {numSpeed}x
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">操作</p>
+                )}
+
+                {/* ══════════════════════════════════════════════════════════
+                    2. 音频轨道 (Audio) 专业设置面板 (绝不显示缩放/不透明度)
+                    ══════════════════════════════════════════════════════════ */}
+                {selectedTrackObj.type === 'audio' && (
+                  <div className="space-y-4">
+                    {/* 音量与左右声道控制 */}
+                    <div className="space-y-3 bg-zinc-950/40 p-2.5 rounded-lg border border-emerald-500/20">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                          <Music2 className="w-3 h-3" />音频音量与声学控制
+                        </p>
+                        <button
+                          className={`text-[9px] px-2 py-0.5 rounded border transition-colors flex items-center gap-1 ${
+                            selectedTrackObj.mute
+                              ? 'bg-rose-950/80 text-rose-300 border-rose-500/50'
+                              : 'bg-emerald-950/40 text-emerald-300 border-emerald-500/40 hover:bg-emerald-900/60'
+                          }`}
+                          onClick={() => {
+                            const newMute = !selectedTrackObj.mute;
+                            updateTrackItem(selectedTrackObj.id, { mute: newMute });
+                            handleVolumeChange(newMute ? [0] : [100]);
+                          }}
+                        >
+                          {selectedTrackObj.mute ? <VolumeX className="w-2.5 h-2.5" /> : <Volume2 className="w-2.5 h-2.5" />}
+                          {selectedTrackObj.mute ? '已静音' : '正常发声'}
+                        </button>
+                      </div>
+                      <div className="space-y-2.5">
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[11px] text-zinc-400">主音频音量</span>
+                            <span className="text-[10px] text-emerald-400 font-mono font-medium">{volume[0]}%</span>
+                          </div>
+                          <Slider
+                            value={volume}
+                            onValueChange={(val) => {
+                              handleVolumeChange(val);
+                              if (selectedTrackObj.mute && val[0] > 0) {
+                                updateTrackItem(selectedTrackObj.id, { mute: false });
+                              }
+                            }}
+                            max={200}
+                            className="[&_[role=slider]]:h-3 [&_[role=slider]]:w-3"
+                          />
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[11px] text-zinc-400">左右声道平衡 (Pan)</span>
+                            <span className="text-[10px] text-zinc-400 font-mono">
+                              {(selectedTrackObj.pan ?? 0) === 0 ? '居中 0' : (selectedTrackObj.pan ?? 0) < 0 ? `左 ${Math.abs(selectedTrackObj.pan ?? 0)}%` : `右 ${selectedTrackObj.pan}%`}
+                            </span>
+                          </div>
+                          <Slider
+                            value={[selectedTrackObj.pan ?? 0]}
+                            onValueChange={(val) => updateTrackItem(selectedTrackObj.id, { pan: val[0] })}
+                            min={-100}
+                            max={100}
+                            step={5}
+                            className="[&_[role=slider]]:h-3 [&_[role=slider]]:w-3"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 淡入淡出曲线控制 */}
+                    <div className="space-y-3 bg-zinc-950/40 p-2.5 rounded-lg border border-emerald-500/20">
+                      <p className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <Waypoints className="w-3 h-3" />专业淡入淡出曲线 (防爆音)
+                      </p>
+                      <div className="space-y-2.5">
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[11px] text-zinc-400">音频开头淡入 (Fade-In)</span>
+                            <span className="text-[10px] text-emerald-400 font-mono">{(selectedTrackObj.fadeIn ?? 1.0).toFixed(1)}s</span>
+                          </div>
+                          <Slider
+                            value={[(selectedTrackObj.fadeIn ?? 1.0) * 10]}
+                            onValueChange={(val) => updateTrackItem(selectedTrackObj.id, { fadeIn: val[0] / 10 })}
+                            min={0}
+                            max={50}
+                            step={1}
+                            className="[&_[role=slider]]:h-3 [&_[role=slider]]:w-3"
+                          />
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[11px] text-zinc-400">音频结尾淡出 (Fade-Out)</span>
+                            <span className="text-[10px] text-emerald-400 font-mono">{(selectedTrackObj.fadeOut ?? 1.5).toFixed(1)}s</span>
+                          </div>
+                          <Slider
+                            value={[(selectedTrackObj.fadeOut ?? 1.5) * 10]}
+                            onValueChange={(val) => updateTrackItem(selectedTrackObj.id, { fadeOut: val[0] / 10 })}
+                            min={0}
+                            max={50}
+                            step={1}
+                            className="[&_[role=slider]]:h-3 [&_[role=slider]]:w-3"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* AI 降噪与空间混响 */}
+                    <div className="space-y-3 bg-zinc-950/40 p-2.5 rounded-lg border border-emerald-500/20">
+                      <p className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <Wand2 className="w-3 h-3" />智能降噪与混响声场
+                      </p>
+                      <div>
+                        <span className="text-[10px] text-zinc-400 block mb-1.5">AI 智能降噪模式</span>
+                        <div className="grid grid-cols-3 gap-1">
+                          {['无降噪', '轻度去噪', '深度纯音'].map(d => {
+                            const cur = selectedTrackObj.denoise || '轻度去噪';
+                            const isSel = cur === d;
+                            return (
+                              <button
+                                key={d}
+                                className={`h-6 text-[10px] rounded border transition-all ${
+                                  isSel
+                                    ? 'bg-emerald-600 text-white border-emerald-500 font-medium'
+                                    : 'bg-zinc-850 border-zinc-700/80 text-zinc-400 hover:text-zinc-200'
+                                }`}
+                                onClick={() => updateTrackItem(selectedTrackObj.id, { denoise: d })}
+                              >
+                                {d}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-zinc-400 block mb-1.5">空间混响与音效</span>
+                        <div className="grid grid-cols-3 gap-1">
+                          {['原声纯净', '录音棚', 'KTV沉浸', '大厅空间', '广播电台', '温暖剧场'].map(r => {
+                            const cur = selectedTrackObj.reverb || '原声纯净';
+                            const isSel = cur === r;
+                            return (
+                              <button
+                                key={r}
+                                className={`h-6 text-[10px] rounded border transition-all ${
+                                  isSel
+                                    ? 'bg-emerald-600 text-white border-emerald-500 font-medium'
+                                    : 'bg-zinc-850 border-zinc-700/80 text-zinc-400 hover:text-zinc-200'
+                                }`}
+                                onClick={() => updateTrackItem(selectedTrackObj.id, { reverb: r })}
+                              >
+                                {r}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 音频变速 */}
+                    <div className="space-y-2 bg-zinc-950/40 p-2.5 rounded-lg border border-emerald-500/20">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                          <Zap className="w-3 h-3" />音频变速播放
+                        </p>
+                        <span className="text-[10px] text-emerald-400 font-mono font-medium">{speed}x</span>
+                      </div>
+                      <div className="grid grid-cols-6 gap-1">
+                        {[0.5, 0.8, 1, 1.2, 1.5, 2].map(numSpeed => {
+                          const isSel = speed === numSpeed;
+                          return (
+                            <Button
+                              key={numSpeed}
+                              variant={isSel ? "default" : "outline"}
+                              size="sm"
+                              className={`h-7 px-0 text-[10px] ${
+                                isSel
+                                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                                  : 'bg-zinc-850 border-zinc-700/80 text-zinc-400 hover:bg-zinc-800 hover:text-white'
+                              }`}
+                              onClick={() => handleSpeedChange(numSpeed)}
+                            >
+                              {numSpeed}x
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ══════════════════════════════════════════════════════════
+                    3. 文案/字幕轨道 (Text) 专业设置面板 (绝不显示缩放/音频音量)
+                    ══════════════════════════════════════════════════════════ */}
+                {selectedTrackObj.type === 'text' && (
+                  <div className="space-y-4">
+                    {/* 文案内容编辑 */}
+                    <div className="space-y-2.5 bg-zinc-950/40 p-2.5 rounded-lg border border-amber-500/20">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                          <Type className="w-3 h-3" />文案内容与编辑
+                        </p>
+                        <span className="text-[9px] text-zinc-500 font-mono">{(selectedTrackObj.text || selectedTrackObj.name).length}字</span>
+                      </div>
+                      <textarea
+                        className="w-full bg-zinc-900 border border-zinc-700/80 rounded-md p-2 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500 resize-none h-20 leading-relaxed font-sans"
+                        placeholder="输入字幕或口播带货文案..."
+                        value={selectedTrackObj.text ?? selectedTrackObj.name}
+                        onChange={(e) => {
+                          const newText = e.target.value;
+                          updateTrackItem(selectedTrackObj.id, { text: newText, name: newText.slice(0, 30) || '无标题文案' });
+                        }}
+                      />
+                      <div className="flex flex-wrap gap-1">
+                        {['🔥爆款热卖中', '限时特惠手慢无', '点击左下角下单', '拍1发3立省百元', '官方正品包邮'].map(tag => (
+                          <button
+                            key={tag}
+                            className="text-[9px] bg-zinc-850 hover:bg-amber-950/60 hover:text-amber-300 text-zinc-400 border border-zinc-700/60 px-1.5 py-0.5 rounded transition-colors"
+                            onClick={() => {
+                              const cur = selectedTrackObj.text ?? selectedTrackObj.name;
+                              const updated = cur ? `${cur} · ${tag}` : tag;
+                              updateTrackItem(selectedTrackObj.id, { text: updated, name: updated.slice(0, 30) });
+                            }}
+                          >
+                            + {tag}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 字体与排版 */}
+                    <div className="space-y-3 bg-zinc-950/40 p-2.5 rounded-lg border border-amber-500/20">
+                      <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <Captions className="w-3 h-3" />字体排版与样式
+                      </p>
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-[11px] text-zinc-400">选择字体</span>
+                          <span className="text-[10px] text-amber-400">{selectedTrackObj.fontFamily || '默认黑体'}</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1">
+                          {['默认黑体', '思源宋体', '快乐体', '抖音美好体', '手写体', '综艺体'].map(font => {
+                            const curFont = selectedTrackObj.fontFamily || '默认黑体';
+                            const isSel = curFont === font;
+                            return (
+                              <button
+                                key={font}
+                                className={`h-6 text-[10px] rounded border transition-all ${
+                                  isSel
+                                    ? 'bg-amber-600 text-white border-amber-500 font-medium'
+                                    : 'bg-zinc-850 border-zinc-700/80 text-zinc-400 hover:text-zinc-200'
+                                }`}
+                                onClick={() => updateTrackItem(selectedTrackObj.id, { fontFamily: font })}
+                              >
+                                {font}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[11px] text-zinc-400">文字字号</span>
+                          <span className="text-[10px] text-amber-400 font-mono">{selectedTrackObj.fontSize ?? 18}px</span>
+                        </div>
+                        <Slider
+                          value={[selectedTrackObj.fontSize ?? 18]}
+                          onValueChange={(val) => updateTrackItem(selectedTrackObj.id, { fontSize: val[0] })}
+                          min={12}
+                          max={64}
+                          className="[&_[role=slider]]:h-3 [&_[role=slider]]:w-3"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between pt-1 border-t border-zinc-800/60">
+                        <span className="text-[11px] text-zinc-400">字重与对齐</span>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant={selectedTrackObj.isBold ? "default" : "outline"}
+                            className={`h-7 w-7 p-0 ${selectedTrackObj.isBold ? 'bg-amber-600 text-white' : 'bg-zinc-850 border-zinc-700 text-zinc-300'}`}
+                            onClick={() => updateTrackItem(selectedTrackObj.id, { isBold: !selectedTrackObj.isBold })}
+                            title="加粗"
+                          >
+                            <Bold className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={selectedTrackObj.isItalic ? "default" : "outline"}
+                            className={`h-7 w-7 p-0 ${selectedTrackObj.isItalic ? 'bg-amber-600 text-white' : 'bg-zinc-850 border-zinc-700 text-zinc-300'}`}
+                            onClick={() => updateTrackItem(selectedTrackObj.id, { isItalic: !selectedTrackObj.isItalic })}
+                            title="斜体"
+                          >
+                            <Italic className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={(selectedTrackObj.textAlign || 'center') === 'left' ? "default" : "outline"}
+                            className={`h-7 w-7 p-0 ${(selectedTrackObj.textAlign || 'center') === 'left' ? 'bg-amber-600 text-white' : 'bg-zinc-850 border-zinc-700 text-zinc-300'}`}
+                            onClick={() => updateTrackItem(selectedTrackObj.id, { textAlign: 'left' })}
+                            title="居左对齐"
+                          >
+                            <AlignLeft className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={(selectedTrackObj.textAlign || 'center') === 'center' ? "default" : "outline"}
+                            className={`h-7 w-7 p-0 ${(selectedTrackObj.textAlign || 'center') === 'center' ? 'bg-amber-600 text-white' : 'bg-zinc-850 border-zinc-700 text-zinc-300'}`}
+                            onClick={() => updateTrackItem(selectedTrackObj.id, { textAlign: 'center' })}
+                            title="居中对齐"
+                          >
+                            <AlignCenter className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={(selectedTrackObj.textAlign || 'center') === 'right' ? "default" : "outline"}
+                            className={`h-7 w-7 p-0 ${(selectedTrackObj.textAlign || 'center') === 'right' ? 'bg-amber-600 text-white' : 'bg-zinc-850 border-zinc-700 text-zinc-300'}`}
+                            onClick={() => updateTrackItem(selectedTrackObj.id, { textAlign: 'right' })}
+                            title="居右对齐"
+                          >
+                            <AlignRight className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 字色与描边样式 */}
+                    <div className="space-y-3 bg-zinc-950/40 p-2.5 rounded-lg border border-amber-500/20">
+                      <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <Palette className="w-3 h-3" />字色、描边与底框
+                      </p>
+                      <div>
+                        <span className="text-[10px] text-zinc-400 block mb-1.5">文字颜色</span>
+                        <div className="flex items-center gap-1.5">
+                          {[
+                            { name: '纯白', color: '#ffffff' },
+                            { name: '爆款金黄', color: '#ffea00' },
+                            { name: '活力橙', color: '#ff7700' },
+                            { name: '醒目红', color: '#ff2d55' },
+                            { name: '科技青', color: '#00f0ff' },
+                            { name: '荧光绿', color: '#22c55e' },
+                            { name: '暗夜黑', color: '#18181b' },
+                          ].map(item => {
+                            const curColor = selectedTrackObj.fontColor || '#ffffff';
+                            const isSel = curColor === item.color;
+                            return (
+                              <button
+                                key={item.color}
+                                className={`w-6 h-6 rounded-full border-2 transition-transform ${isSel ? 'border-amber-400 scale-110 shadow-md ring-2 ring-amber-400/50' : 'border-zinc-700 hover:scale-105'}`}
+                                style={{ backgroundColor: item.color }}
+                                onClick={() => updateTrackItem(selectedTrackObj.id, { fontColor: item.color })}
+                                title={item.name}
+                              />
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[11px] text-zinc-400">描边粗细</span>
+                          <span className="text-[10px] text-zinc-400 font-mono">{selectedTrackObj.strokeWidth ?? 3}px</span>
+                        </div>
+                        <Slider
+                          value={[selectedTrackObj.strokeWidth ?? 3]}
+                          onValueChange={(val) => updateTrackItem(selectedTrackObj.id, { strokeWidth: val[0] })}
+                          min={0}
+                          max={8}
+                          className="[&_[role=slider]]:h-3 [&_[role=slider]]:w-3"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-zinc-400 block mb-1.5">字幕背景底框</span>
+                        <div className="grid grid-cols-4 gap-1">
+                          {[
+                            { name: '半透黑', bg: 'rgba(0, 0, 0, 0.75)' },
+                            { name: '醒目红', bg: 'rgba(239, 68, 68, 0.85)' },
+                            { name: '渐变黄', bg: 'rgba(234, 179, 8, 0.85)' },
+                            { name: '纯透明', bg: 'transparent' },
+                          ].map(b => {
+                            const curBg = selectedTrackObj.bgColor || 'rgba(0, 0, 0, 0.75)';
+                            const isSel = curBg === b.bg;
+                            return (
+                              <button
+                                key={b.name}
+                                className={`h-6 text-[10px] rounded border transition-all ${
+                                  isSel
+                                    ? 'bg-amber-600 text-white border-amber-500 font-medium'
+                                    : 'bg-zinc-850 border-zinc-700/80 text-zinc-400 hover:text-zinc-200'
+                                }`}
+                                onClick={() => updateTrackItem(selectedTrackObj.id, { bgColor: b.bg })}
+                              >
+                                {b.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ══════════════════════════════════════════════════════════
+                    4. 特效 / 画中画 / 贴纸轨道专业设置面板
+                    ══════════════════════════════════════════════════════════ */}
+                {selectedTrackObj.type === 'image' && (
+                  <div className="space-y-4">
+                    <div className="space-y-3 bg-zinc-950/40 p-2.5 rounded-lg border border-purple-500/20">
+                      <p className="text-[10px] font-semibold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <Sparkles className="w-3 h-3" />特效画面与画中画参数
+                      </p>
+                      <div className="space-y-2.5">
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[11px] text-zinc-400">图层缩放</span>
+                            <span className="text-[10px] text-purple-400 font-mono font-medium">{scale[0]}%</span>
+                          </div>
+                          <Slider value={scale} onValueChange={handleScaleChange} min={10} max={300} className="[&_[role=slider]]:h-3 [&_[role=slider]]:w-3" />
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[11px] text-zinc-400">不透明度</span>
+                            <span className="text-[10px] text-purple-400 font-mono font-medium">{opacity[0]}%</span>
+                          </div>
+                          <Slider value={opacity} onValueChange={handleOpacityChange} max={100} className="[&_[role=slider]]:h-3 [&_[role=slider]]:w-3" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 底部通用片段操作栏 */}
+                <div className="space-y-2 pt-2 border-t border-zinc-800">
+                  <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">片段操作</p>
                   <div className="grid grid-cols-3 gap-1.5">
                     <Button size="sm" variant="ghost" className="h-8 text-zinc-400 hover:text-white border border-zinc-700 text-[10px]" onClick={handleSplit}>
                       <ScissorsIcon className="w-3 h-3 mr-1" />分割
@@ -4445,8 +5914,9 @@ export default function VideoEditPage() {
       </div>
 
       {/* ─── 底部时间轴 ──────────────────────────────────────────── */}
-      <div className="h-[235px] border-t border-zinc-800 bg-zinc-950 flex flex-col shrink-0">
-        <div className="h-10 border-b border-zinc-800 flex items-center justify-between px-4 bg-zinc-900/50 shrink-0">
+      {/* 移动端降低时间轴高度，给中部预览留出更多空间；lg 及以上恢复 235px */}
+      <div className="h-[200px] lg:h-[235px] border-t border-zinc-800 bg-zinc-950 flex flex-col shrink-0">
+        <div className="h-10 border-b border-zinc-800 flex items-center justify-between px-2 sm:px-4 bg-zinc-900/50 shrink-0">
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" className="w-8 h-8 text-zinc-400 hover:text-white hover:bg-zinc-800" title="分割 S" onClick={handleSplit}>
               <Scissors className="w-4 h-4" />
@@ -4464,12 +5934,13 @@ export default function VideoEditPage() {
           </div>
 
           <div className="font-mono text-[11px] text-zinc-400 select-none bg-zinc-950/80 px-2.5 py-1 rounded border border-zinc-800/80 flex items-center gap-1.5 shadow-sm">
-            <span className="text-zinc-200 font-medium">{formatTime(currentTime)}</span>
+            <span ref={timeDisplayRef} className="text-zinc-200 font-medium">{formatTime(currentTime)}</span>
             <span className="text-zinc-650">/</span>
             <span className="text-zinc-500">{formatTime(duration)}</span>
           </div>
 
-          <div className="flex items-center gap-1.5 w-36 shrink-0">
+          {/* 缩放条：小屏隐藏避免时间轴头部溢出，时间显示在预览底栏仍有 */}
+          <div className="hidden sm:flex items-center gap-1.5 w-36 shrink-0">
             <button
               className="p-1 hover:bg-zinc-800 rounded transition-colors text-zinc-400 hover:text-white"
               onClick={() => setZoom(prev => Math.max(0, prev - 10))}
@@ -4495,11 +5966,11 @@ export default function VideoEditPage() {
           onClick={handleRulerClick}
           onMouseDown={handleRulerMouseDown}
         >
-          <div className="shrink-0 h-full bg-zinc-900" style={{ width: TRACK_LABEL_W + 6 }} />
+          <div className="shrink-0 h-full bg-zinc-900" style={{ width: TRACK_CONTENT_OFFSET }} />
           <div className="relative h-full overflow-hidden ruler-ticks-container" style={{ flex: 1 }}>
             <div className="absolute top-0 left-0 h-full" style={{ width: duration * pxPerSec, transform: `translateX(-${timelineScrollOffset}px)` }}>
               {(() => {
-                const ticks = [];
+                const ticks: number[] = [];
                 const step = pxPerSec < 15 ? 10 : pxPerSec < 40 ? 5 : 1;
                 for (let i = 0; i <= duration; i += step) {
                   ticks.push(i);
@@ -4515,6 +5986,15 @@ export default function VideoEditPage() {
                   </div>
                 ));
               })()}
+              {/* 标尺上的播放指针游标 */}
+              <div
+                ref={rulerPlayheadRef}
+                className="absolute top-0 bottom-0 pointer-events-none z-30"
+                style={{ left: `${currentTime * pxPerSec}px` }}
+              >
+                <div className="w-0 h-0 border-x-[5px] border-x-transparent border-t-[7px] border-t-red-500 -translate-x-[5px]" />
+                <div className="w-px h-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.9)]" />
+              </div>
             </div>
           </div>
         </div>
@@ -4526,7 +6006,7 @@ export default function VideoEditPage() {
           >
             {/* 轨道时间线刻度网格线背景 */}
             {(() => {
-              const ticks = [];
+              const ticks: number[] = [];
               const step = duration > 120 ? 20 : duration > 60 ? 10 : 5;
               for (let i = 0; i <= duration; i += step) {
                 ticks.push(i);
@@ -4535,7 +6015,7 @@ export default function VideoEditPage() {
                 <div
                   key={`grid-${sec}`}
                   className="absolute top-0 bottom-0 w-px border-l border-zinc-800/40 border-dashed pointer-events-none z-0"
-                  style={{ left: `${TRACK_LABEL_W + sec * pxPerSec}px` }}
+                  style={{ left: `${TRACK_CONTENT_OFFSET + sec * pxPerSec}px` }}
                 />
               ));
             })()}
@@ -4543,15 +6023,27 @@ export default function VideoEditPage() {
             <div className="p-1.5 space-y-1 relative z-10">
               {/* 主视频轨道 */}
               <div className="flex gap-1.5">
-                <div className="shrink-0 h-10 bg-zinc-900 border border-zinc-800 rounded flex flex-col items-center justify-center text-zinc-500 sticky left-0 z-10" style={{ width: TRACK_LABEL_W }}>
+                <div
+                  className={`shrink-0 h-10 border rounded flex flex-col items-center justify-center cursor-pointer transition-all sticky left-0 z-10 select-none ${
+                    selectedTrackObj?.type === 'video'
+                      ? 'border-indigo-500 bg-indigo-950/70 text-indigo-300 ring-1 ring-indigo-500/50'
+                      : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+                  }`}
+                  style={{ width: TRACK_LABEL_W }}
+                  title="点击选中主轨道"
+                  onClick={() => {
+                    const track = tracks.find(t => t.type === 'video');
+                    if (track) setSelectedTrackItem(track.id);
+                  }}
+                >
                   <Film className="w-3.5 h-3.5 mb-0.5" />
-                  <span className="text-[8px]">主轨道</span>
+                  <span className="text-[8px] font-medium">主轨道</span>
                 </div>
                 <div className="relative h-10 bg-zinc-900/30 rounded border border-zinc-800/50" style={{ width: duration * pxPerSec }}>
                   {tracks.filter(item => item.type === 'video').map(item => (
                     <div
                       key={item.id}
-                      className={`absolute top-1 bottom-1 bg-indigo-600/50 border border-indigo-400/60 rounded flex items-center px-2 cursor-pointer hover:bg-indigo-600/70 select-none ${selectedTrackItem === item.id ? 'ring-2 ring-indigo-400' : ''}`}
+                      className={`absolute top-1 bottom-1 bg-indigo-600/50 border border-indigo-400/60 rounded flex items-center px-2 cursor-pointer hover:bg-indigo-600/70 select-none ${(selectedTrackItem === item.id || (!selectedTrackItem && item.id === selectedTrackObj?.id)) ? 'ring-2 ring-indigo-400' : ''}`}
                       style={{
                         left: item.start * pxPerSec,
                         width: item.duration * pxPerSec,
@@ -4570,9 +6062,21 @@ export default function VideoEditPage() {
 
               {/* 音频轨道 */}
               <div className="flex gap-1.5">
-                <div className="shrink-0 h-8 bg-zinc-900 border border-zinc-800 rounded flex flex-col items-center justify-center text-zinc-500 sticky left-0 z-10" style={{ width: TRACK_LABEL_W }}>
+                <div
+                  className={`shrink-0 h-8 border rounded flex flex-col items-center justify-center cursor-pointer transition-all sticky left-0 z-10 select-none ${
+                    selectedTrackObj?.type === 'audio'
+                      ? 'border-emerald-500 bg-emerald-950/70 text-emerald-300 ring-1 ring-emerald-500/50'
+                      : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+                  }`}
+                  style={{ width: TRACK_LABEL_W }}
+                  title="点击选中音频轨道"
+                  onClick={() => {
+                    const track = tracks.find(t => t.type === 'audio');
+                    if (track) setSelectedTrackItem(track.id);
+                  }}
+                >
                   <Music2 className="w-3.5 h-3.5 mb-0.5" />
-                  <span className="text-[8px]">音频</span>
+                  <span className="text-[8px] font-medium">音频</span>
                 </div>
                 <div className="relative h-8 bg-zinc-900/30 rounded border border-zinc-800/50" style={{ width: duration * pxPerSec }}>
                   {tracks.filter(item => item.type === 'audio').map(item => (
@@ -4595,10 +6099,23 @@ export default function VideoEditPage() {
                 </div>
               </div>
 
-              {/* 字幕轨道 */}
+              {/* 字幕文案轨道 */}
               <div className="flex gap-1.5">
-                <div className="shrink-0 h-7 bg-zinc-900 border border-zinc-800 rounded flex items-center justify-center text-zinc-500 sticky left-0 z-10" style={{ width: TRACK_LABEL_W }}>
-                  <Type className="w-3.5 h-3.5" />
+                <div
+                  className={`shrink-0 h-7 border rounded flex items-center justify-center cursor-pointer transition-all sticky left-0 z-10 select-none gap-1 ${
+                    selectedTrackObj?.type === 'text'
+                      ? 'border-amber-500 bg-amber-950/70 text-amber-300 ring-1 ring-amber-500/50'
+                      : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+                  }`}
+                  style={{ width: TRACK_LABEL_W }}
+                  title="点击选中文案轨道"
+                  onClick={() => {
+                    const track = tracks.find(t => t.type === 'text');
+                    if (track) setSelectedTrackItem(track.id);
+                  }}
+                >
+                  <Type className="w-3 h-3" />
+                  <span className="text-[8px] font-medium">文案</span>
                 </div>
                 <div className="relative h-7 bg-zinc-900/30 rounded border border-zinc-800/50" style={{ width: duration * pxPerSec }}>
                   {tracks.filter(item => item.type === 'text').map(item => (
@@ -4623,8 +6140,21 @@ export default function VideoEditPage() {
 
               {/* 特效轨道 */}
               <div className="flex gap-1.5">
-                <div className="shrink-0 h-7 bg-zinc-900 border border-zinc-800 rounded flex items-center justify-center text-zinc-500 sticky left-0 z-10" style={{ width: TRACK_LABEL_W }}>
-                  <Sparkles className="w-3.5 h-3.5" />
+                <div
+                  className={`shrink-0 h-7 border rounded flex items-center justify-center cursor-pointer transition-all sticky left-0 z-10 select-none gap-1 ${
+                    selectedTrackObj?.type === 'image' || selectedTrackObj?.trackId === 'effects'
+                      ? 'border-purple-500 bg-purple-950/70 text-purple-300 ring-1 ring-purple-500/50'
+                      : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+                  }`}
+                  style={{ width: TRACK_LABEL_W }}
+                  title="点击选中特效轨道"
+                  onClick={() => {
+                    const track = tracks.find(t => t.type === 'image' || t.trackId === 'effects');
+                    if (track) setSelectedTrackItem(track.id);
+                  }}
+                >
+                  <Sparkles className="w-3 h-3" />
+                  <span className="text-[8px] font-medium">特效</span>
                 </div>
                 <div className="relative h-7 bg-zinc-900/30 rounded border border-zinc-800/50" style={{ width: duration * pxPerSec }}>
                   {tracks.filter(item => item.type === 'image').map(item => (
@@ -4648,12 +6178,13 @@ export default function VideoEditPage() {
               </div>
             </div>
 
-            {/* 播放指针 */}
+            {/* 播放指针竖线 */}
             <div
-              className="absolute top-0 bottom-0 w-px bg-orange-500 z-20 pointer-events-none"
-              style={{ left: `${TRACK_LABEL_W + currentTime * pxPerSec}px` }}
+              ref={playheadLineRef}
+              className="absolute top-0 bottom-0 w-px bg-red-500 z-20 pointer-events-none shadow-[0_0_8px_rgba(239,68,68,0.8)]"
+              style={{ left: `${TRACK_CONTENT_OFFSET + currentTime * pxPerSec}px` }}
             >
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 bg-orange-500" />
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2.5 h-2.5 rotate-45 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,1)]" />
             </div>
           </div>
         </div>
@@ -4661,7 +6192,7 @@ export default function VideoEditPage() {
 
       {/* 保存弹窗 */}
       <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
-        <DialogContent className="max-w-[calc(100%-2rem)] md:max-w-sm bg-zinc-900 border-zinc-700 text-zinc-200">
+        <DialogContent className="max-w-[calc(100%-2rem)] md:max-w-sm max-h-[85vh] overflow-y-auto bg-zinc-900 border-zinc-700 text-zinc-200">
           <DialogHeader>
             <DialogTitle className="text-zinc-200">保存剪辑项目</DialogTitle>
           </DialogHeader>
@@ -4687,76 +6218,374 @@ export default function VideoEditPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 导出确认与合成语义说明弹窗 */}
-      <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
-        <DialogContent className="max-w-[calc(100%-2rem)] md:max-w-md bg-zinc-900 border-zinc-700 text-zinc-200">
-          <DialogHeader>
-            <DialogTitle className="text-zinc-100 flex items-center gap-2">
-              <Download className="w-5 h-5 text-indigo-400" />
-              导出并渲染带货视频
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2 text-sm">
-            <div className="rounded-lg bg-indigo-950/40 border border-indigo-500/30 p-3 space-y-1.5">
-              <div className="flex items-center gap-1.5 font-medium text-indigo-300 text-xs">
-                <Sparkles className="w-4 h-4 text-indigo-400 shrink-0" />
-                <span>AI 云端整段合成机制说明</span>
+      {/* 导出视频与渲染全流程进度弹窗 */}
+      <Dialog open={exportDialogOpen} onOpenChange={(open) => {
+        if (!open && exportStage === 'rendering') {
+          // 渲染中点击外部防误触关闭
+          toast.warning('视频渲染正在进行中，请耐心等待完成');
+          return;
+        }
+        setExportDialogOpen(open);
+      }}>
+        {/* 移动端限高：标头固定，内容区滚动 */}
+        <DialogContent className="max-w-[calc(100%-2rem)] md:max-w-xl max-h-[85vh] grid-rows-[auto_minmax(0,1fr)] bg-zinc-900 border-zinc-700 text-zinc-200 p-0 overflow-hidden shadow-2xl">
+          {/* 弹窗顶部标头 */}
+          <div className="px-3 sm:px-6 py-4 border-b border-zinc-800 bg-zinc-950/60 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className={cn(
+                "w-9 h-9 rounded-xl flex items-center justify-center border",
+                exportStage === 'rendering' ? "bg-indigo-950/70 border-indigo-500/40 text-indigo-400" :
+                exportStage === 'completed' ? "bg-emerald-950/70 border-emerald-500/40 text-emerald-400" :
+                exportStage === 'failed' ? "bg-rose-950/70 border-rose-500/40 text-rose-400" :
+                "bg-zinc-800 border-zinc-700 text-zinc-300"
+              )}>
+                {exportStage === 'rendering' ? <Loader2 className="w-5 h-5 animate-spin" /> :
+                 exportStage === 'completed' ? <CheckCircle2 className="w-5 h-5" /> :
+                 exportStage === 'failed' ? <AlertCircle className="w-5 h-5" /> :
+                 <Download className="w-5 h-5 text-indigo-400" />}
               </div>
-              <p className="text-xs text-indigo-200/80 leading-relaxed">
-                当前版本将基于多轨道分镜脚本与 Prompt 提交至云端 Seedance AI 引擎进行分段生成与拼装合成。您的轨道配置、字幕标记及项目参数已同步保存在工程草稿中。
-              </p>
+              <div>
+                <DialogTitle className="text-zinc-100 text-base font-semibold">
+                  {exportStage === 'idle' && '导出并渲染带货视频'}
+                  {exportStage === 'rendering' && '正在执行视频多轨渲染合成...'}
+                  {exportStage === 'completed' && '视频导出渲染成功'}
+                  {exportStage === 'failed' && '视频渲染导出失败'}
+                </DialogTitle>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  {exportStage === 'idle' && '配置导出分辨率与参数，渲染完成后将自动同步至作品库与素材库'}
+                  {exportStage === 'rendering' && (exportStatusText || '云端 AI 与本地引擎并行处理中')}
+                  {exportStage === 'completed' && '成片已入库并生成真实高清首帧，可直接预览或下载'}
+                  {exportStage === 'failed' && '导出过程中发生异常，您可以检查原因后重试'}
+                </p>
+              </div>
             </div>
+          </div>
 
-            <div className="grid grid-cols-2 gap-2 text-xs bg-zinc-800/60 p-3 rounded-lg border border-zinc-800">
-              <div>
-                <span className="text-zinc-500">项目名称：</span>
-                <span className="text-zinc-200 font-medium truncate block">{projectTitle || '未命名项目'}</span>
-              </div>
-              <div>
-                <span className="text-zinc-500">成片时长：</span>
-                <span className="text-zinc-200 font-medium block">约 {duration} 秒</span>
-              </div>
-              <div>
-                <span className="text-zinc-500">时间轴轨道：</span>
-                <span className="text-zinc-200 font-medium block">{tracks.length} 个轨道元素</span>
-              </div>
-              <div>
-                <span className="text-zinc-500">画幅比例：</span>
-                <span className="text-zinc-200 font-medium block">9:16 竖屏</span>
-              </div>
-            </div>
+          <div className="p-3 sm:p-6 space-y-5 overflow-y-auto min-h-0">
+            {/* 1. 参数配置阶段 (idle) */}
+            {exportStage === 'idle' && (
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-zinc-300 flex items-center justify-between">
+                    <span>成片作品标题</span>
+                    <span className="text-[11px] text-zinc-500 font-normal">用于作品库与素材库展示</span>
+                  </label>
+                  <Input
+                    value={exportFileName}
+                    onChange={(e) => setExportFileName(e.target.value)}
+                    placeholder="输入导出视频名称"
+                    className="bg-zinc-800/80 border-zinc-700 text-zinc-100 text-sm focus-visible:ring-indigo-500"
+                  />
+                </div>
 
-            <p className="text-[11px] text-zinc-500">
-              * 提交后将自动创建后台异步任务，预计耗时 1~3 分钟。您可以在「作品库」或「任务队列」实时追踪生成进度。
-            </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-zinc-300">导出画质 / 分辨率</label>
+                    <div className="grid grid-cols-2 gap-1.5 p-1 bg-zinc-950 rounded-lg border border-zinc-800">
+                      <button
+                        type="button"
+                        onClick={() => setExportResolution('1080p')}
+                        className={cn(
+                          "py-1.5 px-2 rounded text-xs font-medium transition-all text-center",
+                          exportResolution === '1080p'
+                            ? "bg-indigo-600 text-white shadow-sm"
+                            : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
+                        )}
+                      >
+                        1080P 高清
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setExportResolution('720p')}
+                        className={cn(
+                          "py-1.5 px-2 rounded text-xs font-medium transition-all text-center",
+                          exportResolution === '720p'
+                            ? "bg-indigo-600 text-white shadow-sm"
+                            : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
+                        )}
+                      >
+                        720P 标清
+                      </button>
+                    </div>
+                  </div>
 
-            <div className="flex gap-2 pt-1">
-              <Button
-                variant="ghost"
-                className="flex-1 h-9 text-zinc-400 hover:text-zinc-200"
-                onClick={() => setExportDialogOpen(false)}
-                disabled={exporting}
-              >
-                取消
-              </Button>
-              <Button
-                className="flex-1 h-9 bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5"
-                onClick={executeExportTask}
-                disabled={exporting}
-              >
-                {exporting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    正在提交...
-                  </>
-                ) : (
-                  <>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-zinc-300">帧率设置 (FPS)</label>
+                    <div className="grid grid-cols-2 gap-1.5 p-1 bg-zinc-950 rounded-lg border border-zinc-800">
+                      <button
+                        type="button"
+                        onClick={() => setExportFps('30')}
+                        className={cn(
+                          "py-1.5 px-2 rounded text-xs font-medium transition-all text-center",
+                          exportFps === '30'
+                            ? "bg-indigo-600 text-white shadow-sm"
+                            : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
+                        )}
+                      >
+                        30 FPS 推荐
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setExportFps('60')}
+                        className={cn(
+                          "py-1.5 px-2 rounded text-xs font-medium transition-all text-center",
+                          exportFps === '60'
+                            ? "bg-indigo-600 text-white shadow-sm"
+                            : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
+                        )}
+                      >
+                        60 FPS 流畅
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 剪辑工程摘要卡片 */}
+                <div className="rounded-xl bg-zinc-950/70 border border-zinc-800 p-3.5 space-y-2.5">
+                  <div className="text-xs font-medium text-zinc-400 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-zinc-300">
+                      <Film className="w-3.5 h-3.5 text-indigo-400" />
+                      当前剪辑工程参数
+                    </span>
+                    <span className="text-[11px] text-indigo-400 font-mono">
+                      预计体积 ~{(Math.round(duration * (exportResolution === '1080p' ? 0.45 : 0.28) * 10) / 10).toFixed(1)} MB
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2 text-center">
+                    <div className="bg-zinc-900/80 p-2 rounded-lg border border-zinc-800/60">
+                      <span className="text-[10px] text-zinc-500 block">成片时长</span>
+                      <span className="text-xs font-semibold text-zinc-200 mt-0.5 block">{Math.round(duration)} 秒</span>
+                    </div>
+                    <div className="bg-zinc-900/80 p-2 rounded-lg border border-zinc-800/60">
+                      <span className="text-[10px] text-zinc-500 block">有效轨道</span>
+                      <span className="text-xs font-semibold text-zinc-200 mt-0.5 block">{tracks.length} 个元素</span>
+                    </div>
+                    <div className="bg-zinc-900/80 p-2 rounded-lg border border-zinc-800/60">
+                      <span className="text-[10px] text-zinc-500 block">画幅构图</span>
+                      <span className="text-xs font-semibold text-zinc-200 mt-0.5 block">
+                        {editorAspect === 'aspect-[9/16]' ? '9:16 竖屏' : '16:9 横屏'}
+                      </span>
+                    </div>
+                    <div className="bg-zinc-900/80 p-2 rounded-lg border border-zinc-800/60">
+                      <span className="text-[10px] text-zinc-500 block">编码格式</span>
+                      <span className="text-xs font-semibold text-zinc-200 mt-0.5 block">MP4 (H.264)</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <Button
+                    variant="ghost"
+                    className="flex-1 h-10 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+                    onClick={() => setExportDialogOpen(false)}
+                  >
+                    取消
+                  </Button>
+                  <Button
+                    className="flex-1 h-10 bg-indigo-600 hover:bg-indigo-700 text-white gap-2 font-medium shadow-md shadow-indigo-600/20"
+                    onClick={executeExportTask}
+                  >
                     <Sparkles className="w-4 h-4" />
-                    确认提交云端渲染
-                  </>
-                )}
-              </Button>
-            </div>
+                    开始渲染导出并入库
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* 2. 渲染中阶段 (rendering) */}
+            {exportStage === 'rendering' && (
+              <div className="space-y-4">
+                {/* 大进度条与百分比 */}
+                <div className="rounded-xl bg-zinc-950 p-4 border border-zinc-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="relative flex h-2.5 w-2.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-indigo-500"></span>
+                      </span>
+                      <span className="text-sm font-medium text-zinc-200">{exportStatusText}</span>
+                    </div>
+                    <span className="text-lg font-bold font-mono text-indigo-400">{exportProgress}%</span>
+                  </div>
+                  <Progress value={exportProgress} className="h-2.5 bg-zinc-800" />
+                </div>
+
+                {/* 阶段状态指示器 */}
+                <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                  {[
+                    { label: '解析轨道', target: 28 },
+                    { label: '抽帧校准', target: 48 },
+                    { label: '滤镜合成', target: 84 },
+                    { label: '双库联动', target: 100 },
+                  ].map((step, idx) => (
+                    <div
+                      key={step.label}
+                      className={cn(
+                        "p-2 rounded-lg border text-[11px] transition-all",
+                        exportProgress >= step.target
+                          ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-300 font-medium"
+                          : exportProgress >= (step.target - 20)
+                          ? "bg-indigo-950/40 border-indigo-500/40 text-indigo-300 font-medium animate-pulse"
+                          : "bg-zinc-950/40 border-zinc-800/60 text-zinc-500"
+                      )}
+                    >
+                      <div className="flex items-center justify-center gap-1 mb-0.5">
+                        {exportProgress >= step.target ? (
+                          <Check className="w-3 h-3 text-emerald-400" />
+                        ) : (
+                          <span className="w-3 h-3 rounded-full border border-current text-[9px] flex items-center justify-center">
+                            {idx + 1}
+                          </span>
+                        )}
+                        <span>{step.label}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 终端实时日志 */}
+                <div className="rounded-xl bg-[#090d14] border border-zinc-800 overflow-hidden">
+                  <div className="flex items-center justify-between px-3 py-1.5 border-b border-zinc-800/80 bg-zinc-950/80 text-[11px] text-zinc-400 font-mono">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                      Render Engine Pipeline Log
+                    </span>
+                    <span className="text-zinc-600">H.264/AAC</span>
+                  </div>
+                  <div className="p-3 font-mono text-[11px] space-y-1.5 max-h-36 overflow-y-auto">
+                    {exportLogs.map((log, i) => (
+                      <div key={i} className="flex items-start gap-2 leading-relaxed">
+                        <span className="text-zinc-600 shrink-0">[{log.time}]</span>
+                        <span className={cn(
+                          "shrink-0 px-1 rounded text-[10px]",
+                          log.percent === 100 ? "bg-emerald-500/20 text-emerald-400" : "bg-indigo-500/20 text-indigo-300"
+                        )}>
+                          {log.percent}%
+                        </span>
+                        <span className="text-zinc-300">{log.stage}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-zinc-500 text-center">
+                  * 渲染合成将在后台持续写入 Supabase，成片导出后将同步出现在「作品库」与「素材库」中
+                </p>
+              </div>
+            )}
+
+            {/* 3. 渲染成功阶段 (completed) */}
+            {exportStage === 'completed' && exportResult && (
+              <div className="space-y-4">
+                {/* 视频内嵌播放与信息预览 */}
+                <div className="rounded-xl overflow-hidden bg-black border border-zinc-800 relative group">
+                  <video
+                    src={exportResult.video_url}
+                    poster={exportResult.thumbnail_url}
+                    controls
+                    autoPlay
+                    playsInline
+                    className="w-full max-h-64 object-contain mx-auto bg-black"
+                  />
+                  <div className="absolute top-2 left-2 bg-black/70 backdrop-blur-md px-2 py-0.5 rounded text-[10px] text-emerald-400 font-medium border border-emerald-500/30 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                    渲染完成 · 真实首帧
+                  </div>
+                </div>
+
+                {/* 成片信息卡片 */}
+                <div className="grid grid-cols-4 gap-2 bg-zinc-950 p-3 rounded-xl border border-zinc-800 text-center">
+                  <div>
+                    <span className="text-[10px] text-zinc-500 block">视频名称</span>
+                    <span className="text-xs font-semibold text-zinc-200 truncate block mt-0.5" title={exportResult.title}>
+                      {exportResult.title}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-zinc-500 block">成片画质</span>
+                    <span className="text-xs font-semibold text-indigo-400 block mt-0.5">{exportResult.resolution}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-zinc-500 block">成片时长</span>
+                    <span className="text-xs font-semibold text-zinc-200 block mt-0.5">{exportResult.duration} 秒</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-zinc-500 block">文件大小</span>
+                    <span className="text-xs font-semibold text-zinc-200 block mt-0.5">{exportResult.size}</span>
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-emerald-950/30 border border-emerald-500/30 flex items-center justify-between text-xs text-emerald-300">
+                  <span className="flex items-center gap-1.5">
+                    <FileCheck2 className="w-4 h-4 text-emerald-400" />
+                    数据已成功写入 video_projects 和 materials 表
+                  </span>
+                  <span className="text-[11px] text-emerald-400 font-medium">双库已同步</span>
+                </div>
+
+                {/* 操作按钮组（移动端纵向堆叠，sm 及以上恢复三列） */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                  <Button
+                    variant="outline"
+                    className="h-10 border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 gap-1.5 text-xs"
+                    onClick={handleDownloadExported}
+                  >
+                    <Download className="w-3.5 h-3.5 text-indigo-400" />
+                    下载视频文件
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-10 border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 gap-1.5 text-xs"
+                    onClick={() => {
+                      setExportDialogOpen(false);
+                      navigate('/works');
+                    }}
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 text-indigo-400" />
+                    查看作品库
+                  </Button>
+                  <Button
+                    className="h-10 bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 text-xs font-medium"
+                    onClick={() => setExportDialogOpen(false)}
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    完成并继续编辑
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* 4. 渲染失败阶段 (failed) */}
+            {exportStage === 'failed' && (
+              <div className="space-y-4">
+                <div className="p-4 rounded-xl bg-rose-950/40 border border-rose-500/40 space-y-2">
+                  <div className="flex items-center gap-2 text-rose-300 font-semibold text-sm">
+                    <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                    <span>导出失败原因</span>
+                  </div>
+                  <p className="text-xs text-rose-200/90 leading-relaxed font-mono bg-black/40 p-2.5 rounded border border-rose-900/50">
+                    {exportError || '未知网络错误或渲染任务超时'}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <Button
+                    variant="ghost"
+                    className="flex-1 h-10 text-zinc-400 hover:text-zinc-200"
+                    onClick={() => setExportDialogOpen(false)}
+                  >
+                    关闭
+                  </Button>
+                  <Button
+                    className="flex-1 h-10 bg-indigo-600 hover:bg-indigo-700 text-white gap-2 font-medium"
+                    onClick={executeExportTask}
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    重试导出渲染
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

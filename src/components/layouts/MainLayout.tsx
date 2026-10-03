@@ -21,7 +21,7 @@ import {
   Package, Users2, CreditCard, Wand2,
   Search, X, ArrowRight, Scissors, Moon, Sun,
   Layers, Share2, Code2, Gift, LayoutGrid, Bell, House, CheckCheck, LogOut,
-  Zap, History, CheckCircle2,
+  Zap, History, CheckCircle2, ChevronDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -251,6 +251,7 @@ function AIToolboxNavItem({ onNavClick }: { onNavClick?: () => void }) {
       >
         <LayoutGrid className={cn('w-4 h-4 shrink-0 transition-colors', isActive ? 'text-primary' : 'text-sidebar-foreground/50 group-hover:text-sidebar-foreground')} />
         <span className="flex-1 text-left">AI工具箱</span>
+        <ChevronDown className={cn('w-3.5 h-3.5 shrink-0 text-sidebar-foreground/40 transition-transform duration-200', open && 'rotate-180')} />
       </button>
 
       {/* 二级子菜单 */}
@@ -329,8 +330,8 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
         </div>
       </Link>
 
-      {/* 导航 */}
-      <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto min-h-0">
+      {/* 导航：预留底部安全区空间，确保「生态扩展」分组末尾条目不被机型底栏遮挡 */}
+      <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto min-h-0" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
         {navGroups.map((group) => (
           <div key={group.label}>
             <p className="text-xs font-medium text-sidebar-foreground/40 uppercase tracking-wider px-3 mb-1.5">

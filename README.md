@@ -2,7 +2,7 @@
 
 # 🛒 Shopro AI
 
-### 电商 AIGC 带货视频创作 SaaS 平台 —— 一人 + 浏览器，量产爆款带货短视频
+### 跨境电商 AIGC 带货视频创作平台 
 
 [![React](https://img.shields.io/badge/React-18.3-61dafb?logo=react&logoColor=black)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)

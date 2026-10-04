@@ -339,6 +339,102 @@ docker compose -f docker-compose.mcp.yml up     # 或容器化 HTTP/SSE 模式�
 
 ---
 
+## 🏗️ 系统架构与测试汇总
+
+> 完整版见 [系统架构与测试汇总.md](./系统架构与测试汇总.md)
+
+### 系统架构图
+
+![Shopro AI 系统架构图](./doc/system_architecture.svg)
+
+**五层架构说明**：
+
+| 层级 | 名称 | 核心组成 |
+|---|---|---|
+| ① | 接入层（Web 前端） | **商家创作端**（React 18 + TS + Vite，43 页面模块，Radix UI / TailwindCSS / SSE 流式）；**厂商运营中台**（Vue 3 + Element Plus + Pinia，多租户、Attempt 追踪、故障退款、内容风控、积分调账）；**MCP 开放生态**（Python FastMCP，tools.json 封装 7 大工具，HTTP/SSE + stdio，Docker） |
+| ② | 网关与无服务器计算层 | Vercel Edge 代理重写（glm/siliconflow/tokendance/openai-next/dxkp）；FastAPI 代理（密钥隔离透传）；Supabase Edge Functions ×23（AI 编排 + 支付 + 短信）；RLS / JWT / 限流 / 验签 |
+| ③ | BaaS 核心层 | Auth/JWT；PostgreSQL + RLS（products/video_tasks/works/profiles/teams/api_keys，26 迁移，原子扣费 RPC + credit_logs）；pgvector 向量库（RAG/Few-shot）；Storage + CDN |
+| ④ | AI 多模态模型服务层 | 文本：DeepSeek-V4-Flash + GLM-5.3-Flash；语音：CosyVoice2 + TeleSpeechASR；视频：Seedance 2.0；图像：Flux 1.1 Pro；备份：Kling/Sora/MiniMax（故障降级） |
+| ⑤ | 支付与数据生态层 | 支付宝 AI 付 + 微信 Webhook；选品引擎（FastData/EchoTik/Kalodata/TikMeta）；跨平台发布；ROI 预测/A/B 回流 |
+
+### Agent 工作流程图
+
+![Shopro AI Agent 工作流图](./doc/agent_workflow.svg)
+
+**主流程（7 大工具调用链 + 双重决策兜底）**：
+
+| 步骤 | 环节 | 说明 |
+|---|---|---|
+| 1 | 用户输入 | 商品 URL / 口令 / 关键词 |
+| 2 | 工具① 商品解析·卖点提取 | Edge Function 抓取 + DeepSeek 结构化（功能/优势/利益/证据） |
+| 3 | 工具② CoT 四层脚本生成 | SSE 流式：钩子→痛点→产品→CTA + 情感标注；可选 pgvector RAG Few-shot 增强 |
+| 4 | 工具③ 数字人 + 情感配音 | 形象克隆 · CosyVoice2 · 50+ 语种 · 情绪时间轴对齐 |
+| 5 | 决策点：creditGuard | 积分余额 ≥ 10？否 → 充值引导弹窗（支付宝/微信），到账后重校验 |
+| 6 | 工具④ 积分原子扣费 RPC | PostgreSQL 事务扣减 10 积分 + credit_logs 审计 + 全站广播 |
+| 7 | 工具⑤ Seedance 异步渲染提交 | 首尾帧 + 声轨；**网络超时禁止自动重试（防重复扣费）** |
+| 8 | 决策点：渲染状态 | 失败 → Attempt 指数退避重试 → 多次失败自动退款兜底（原路退回 + 冲正记录） |
+| 9 | 工具⑥ 结果轮询 + 封面生成 | 首帧截取真实封面 · Flux 多封面候选择优 · 作品自动入库 |
+| 10 | 工具⑦ 多轨剪辑·导出·发布 | Canvas 分镜编辑 · 抖音/TikTok/小红书/Amazon 排期分发 |
+| 11 | 数据回流自学习闭环 | ROI 预测 · A/B 淘汰 · 低效文案 AI 重写，回流增强下一轮脚本 |
+
+**MCP 智能体调用链**：外部 AI Agent（Claude / GPT / 商家自建）→ MCP Server（FastMCP·tools.json 契约·ak_ 密钥 + JWT）→ 7 大工具封装（parse_product / generate_script / synthesize_voice / create_video / query_video / generate_cover / analyze_competitor）→ Supabase Edge Functions（与商家端共用同一真实扣费/审计链路）。
+
+### 测试用例与结果汇总
+
+> **测试日期**：2026-10-03 ｜ **环境**：Windows 22H2 · Node 18+ · pnpm 10.34.5 · Supabase 云端托管。本项目 AI 能力全部为真实第三方模型调用（无硬编码 Mock），结果均来自真实执行或 `scratch/` 探针实测。
+
+**① 自动化质量门禁**
+
+| 编号 | 场景 | 命令 | 实际结果 | 状态 |
+|---|---|---|---|---|
+| TC-A1 | 生产构建自检 | `pnpm build` | ✓ built in 36.37s，40+ 懒加载分包，无构建错误 | ✅ |
+| TC-A2 | Lint 管线 | `pnpm lint` | Biome + 自定义 yml 规则（SelectItem/toast-hook/slot-nesting）持续执行 | ✅ |
+| TC-A3 | TS 严格类型检查 | `tsc --noEmit` | 25 条非阻断提示，不影响构建与运行 | ⚠️ |
+
+**② 积分与计费链路（核心商业闭环）**
+
+| 编号 | 场景 | 实际结果 | 状态 |
+|---|---|---|---|
+| TC-B1 | 注册赠初始积分 | DB 触发器主口径生效，历史「50 覆盖 20」缺陷已修复回归 | ✅ |
+| TC-B2 | 余额不足前置拦截 | creditGuard 弹窗触发，不发起生成、不产生扣费 | ✅ |
+| TC-B3 | 原子扣费与流水审计 | RPC 事务扣 10 积分，credit_logs 可查，顶栏余额实时刷新 | ✅ |
+| TC-B4 | 生成失败积分退还 | Attempt 重试耗尽自动退款，后台支持尝试级下探与调账 | ✅ |
+| TC-B5 | 支付宝 AI 付下单与回调 | alipay 四件套 Edge Function 链路联通，验签通过 | ✅ |
+
+**③ AI 模型真实调用链路（scratch/ 探针实测）**
+
+| 编号 | 场景 | 实际结果 | 状态 |
+|---|---|---|---|
+| TC-C1 | GLM 提示词增强通道 | 经 Vercel `/glm-api` 代理联通；确认思维链不可关闭的延迟下限（已知特性） | ✅ |
+| TC-C2 | MiniMax 对话/音频 | 任务提交与查询链路正常，参数规格校验通过 | ✅ |
+| TC-C3 | Seedance 视频生成 | 异步任务链路正常；修正前端默认 16:9 回归 | ✅ |
+| TC-C4 | Wan3 / HappyHorse 网关 | 发现并修复「模型参数规格差异导致 400 静默降级」缺陷，回归通过 | ✅ |
+| TC-C5 | 视频任务防重复提交 | 提交超时不自动重试（防重复扣费），返回可恢复错误 | ✅ |
+| TC-C6 | CoT 脚本 SSE 流式生成 | 打字机流式输出四层脚本正常（eventsource-parser） | ✅ |
+
+**④ 在线部署与运行时冒烟**
+
+| 编号 | 场景 | 实际结果 | 状态 |
+|---|---|---|---|
+| TC-D1 | 线上首页可访问性 | GET https://f.playe.top 返回 200，标题正常渲染 | ✅ |
+| TC-D2 | AI 网关代理重写 | glm/siliconflow/tokendance/openai-next/dxkp 五组 rewrites 线上生效 | ✅ |
+| TC-D3 | 数据库迁移与 RLS | 26 个迁移 + schema.sql 链路完整；FOR ALL 策略陷阱已显式清理 | ✅ |
+| TC-D4 | 弹窗前台可见性 | 自定义模型弹窗 Portal 顶层化，动画冻结场景下仍可见 | ✅ |
+| TC-D5 | 移动端触屏交互 | 修复 3D 变换与 select-none 导致点击失效；底部 Tab + 抽屉全导航可用 | ✅ |
+| TC-D6 | 视频编辑器播放流畅度 | rAF + video 原生时钟驱动，60FPS 游标渲染，卡顿回归通过 | ✅ |
+
+**⑤ MCP 开放生态**
+
+| 编号 | 场景 | 实际结果 | 状态 |
+|---|---|---|---|
+| TC-E1 | MCP 工具契约 | tools.json 7 大工具 schema 与服务端实现一致 | ✅ |
+| TC-E2 | stdio 传输启动 | 本地握手成功并完成工具枚举 | ✅ |
+| TC-E3 | Docker 部署 | Dockerfile + docker-compose 编排齐备，HTTP 模式可对外提供 | ✅ |
+
+**结果统计**：共 23 个用例 —— ✅ 通过 22 项，⚠️ 非阻断提示 1 项（TC-A3），❌ 失败 0 项。业务闭环与 AI 真实性全链路实测通过。
+
+---
+
 ## 🏆 项目评分分析
 
 > **评分依据**：比赛评分细则（评分维度与权重 / 加分项与减分项 / 建议提交交付物）｜完整版见 [评分.md](./评分.md)

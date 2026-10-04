@@ -21,12 +21,14 @@ import {
   Package, Users2, CreditCard, Wand2,
   Search, X, ArrowRight, Scissors, Moon, Sun,
   Layers, Share2, Code2, Gift, LayoutGrid, Bell, House, CheckCheck, LogOut,
-  Zap, History, CheckCircle2, ChevronDown,
+  Zap, History, CheckCircle2, ChevronDown, Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/db/supabase';
 import { OPEN_CREDITS_DIALOG_EVENT, REGISTER_BONUS_CREDITS } from '@/lib/creditGuard';
+import { redeemCoupon } from '@/api/credits';
+import type { CreditLog } from '@/types/types';
 
 // ── FE-UX 主题持久化 hook ─────────────────────────────────────────────────
 export type ThemeType = 'light' | 'dark';
@@ -466,13 +468,27 @@ function TopBarNotificationBell({ isDarkHeader }: { isDarkHeader: boolean }) {
   );
 }
 
+// ── 积分变动时间格式化（模块级，供弹窗明细复用）───────────────────────────────
+function fmtCreditTime(d: string) {
+  try {
+    const dt = new Date(d);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${pad(dt.getMonth() + 1)}-${pad(dt.getDate())} ${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+  } catch {
+    return d;
+  }
+}
+
 // ── 积分详情与充值弹窗 ───────────────────────────────────────────────────
 function CreditsDetailModal({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
-  const { profile } = useAuth();
-  const { creditsLeft } = useCredits();
+  const { user } = useAuth();
+  const { creditsLeft, refresh: refreshCredits } = useCredits();
   const [activeTab, setActiveTab] = useState<'recharge' | 'history'>('recharge');
   const [selectedPkg, setSelectedPkg] = useState<string>('pkg-2');
   const [couponCode, setCouponCode] = useState('');
+  const [redeeming, setRedeeming] = useState(false);
+  const [logs, setLogs] = useState<CreditLog[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
 
   const PACKAGES = [
     { id: 'pkg-1', name: '基础体验包', credits: 100, bonus: 0, price: 10, tag: '生成 10 个视频' },
@@ -481,20 +497,65 @@ function CreditsDetailModal({ open, onOpenChange }: { open: boolean; onOpenChang
     { id: 'pkg-4', name: '全能旗舰包', credits: 3000, bonus: 600, price: 300, tag: '💎 生成 360 个视频' },
   ];
 
-  const MOCK_LOGS = [
-    { id: 'l-1', type: 'recharge', desc: '充值爆款进阶套餐', amount: '+550', date: '2026-08-20 10:30', status: '完成' },
-    { id: 'l-2', type: 'consume', desc: 'AI 视频生成任务', amount: '-10', date: '2026-08-20 09:15', status: '支出' },
-    { id: 'l-3', type: 'consume', desc: 'AI 视频生成任务', amount: '-10', date: '2026-08-19 16:40', status: '支出' },
-    { id: 'l-4', type: 'reward', desc: '新用户注册赠送', amount: '+20', date: '2026-08-18 14:20', status: '赠送' },
-  ];
-
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [payPkg, setPayPkg] = useState({ name: '爆款进阶包', price: '50', credits: '550' });
 
-  const handleRedeem = () => {
-    if (!couponCode.trim()) { toast.error('请输入兑换码'); return; }
-    toast.success(`兑换码「${couponCode}」核销成功！已为您到账 +100 积分`);
-    setCouponCode('');
+  // 真实积分变动明细：从 credit_logs 读取当前用户最近流水（与 CreditsPage 口径一致）
+  const loadLogs = useCallback(async () => {
+    if (!user?.id) return;
+    setLoadingLogs(true);
+    try {
+      const { data } = await supabase
+        .from('credit_logs')
+        .select('id, user_id, amount, type, description, credits_after, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      setLogs(Array.isArray(data) ? (data as CreditLog[]) : []);
+    } catch (err) {
+      console.error('[CreditsDetailModal] 加载积分明细失败:', err);
+    } finally {
+      setLoadingLogs(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (open) loadLogs();
+  }, [open, loadLogs]);
+
+  // 余额变动（含兑换核销、扣费、退款）时刷新明细与顶部余额，保证「积分记录」即时更新
+  useEffect(() => {
+    if (!open) return;
+    const handleChanged = () => { loadLogs(); refreshCredits(); };
+    window.addEventListener('credits_changed', handleChanged);
+    return () => window.removeEventListener('credits_changed', handleChanged);
+  }, [open, loadLogs, refreshCredits]);
+
+  const handleRedeem = async () => {
+    const code = couponCode.trim();
+    if (!code) { toast.error('请输入兑换码'); return; }
+    if (redeeming) return; // 防重复提交
+    if (!user?.id) { toast.error('请先登录后再兑换'); return; }
+
+    setRedeeming(true);
+    try {
+      const res = await redeemCoupon(code);
+      if (res.success) {
+        toast.success(res.message);
+        setCouponCode('');
+        // 即时刷新：顶部余额展示 + 弹窗余额卡片 + 积分变动明细
+        window.dispatchEvent(new CustomEvent('credits_changed', { detail: { creditsLeft: res.balance } }));
+        refreshCredits();
+        loadLogs();
+      } else {
+        toast.error(res.message);
+      }
+    } catch (err) {
+      console.error('[CreditsDetailModal] 兑换异常:', err);
+      toast.error('系统异常，请稍后重试');
+    } finally {
+      setRedeeming(false);
+    }
   };
 
   const handlePay = (pkg: typeof PACKAGES[0]) => {
@@ -624,38 +685,56 @@ function CreditsDetailModal({ open, onOpenChange }: { open: boolean; onOpenChang
                     type="text"
                     value={couponCode}
                     onChange={e => setCouponCode(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleRedeem(); } }}
+                    disabled={redeeming}
                     placeholder="输入兑换码 (例如 VIP888)"
-                    className="flex-1 h-7.5 sm:h-8 px-2.5 rounded-lg bg-black/40 border border-white/15 text-[11px] sm:text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:border-pink-500"
+                    className="flex-1 h-7.5 sm:h-8 px-2.5 rounded-lg bg-black/40 border border-white/15 text-[11px] sm:text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:border-pink-500 disabled:opacity-60"
                   />
-                  <Button size="sm" onClick={handleRedeem} className="h-7.5 sm:h-8 text-xs px-3 bg-pink-500 hover:bg-pink-600 text-white font-semibold rounded-lg">
-                    兑换
+                  <Button
+                    size="sm"
+                    onClick={handleRedeem}
+                    disabled={redeeming}
+                    className="h-7.5 sm:h-8 text-xs px-3 bg-pink-500 hover:bg-pink-600 text-white font-semibold rounded-lg disabled:opacity-60"
+                  >
+                    {redeeming ? (<><Loader2 className="w-3 h-3 animate-spin mr-1" />兑换中</>) : '兑换'}
                   </Button>
                 </div>
               </div>
             </>
           ) : (
-            /* 变动明细 */
+            /* 变动明细：真实积分流水 */
             <div className="space-y-2">
-              {MOCK_LOGS.map(log => (
-                <div key={log.id} className="p-3 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between hover:bg-white/8 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold',
-                      log.amount.startsWith('+') ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-pink-500/20 text-pink-400 border border-pink-500/30')}>
-                      {log.amount.startsWith('+') ? '+' : '-'}
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-white">{log.desc}</p>
-                      <p className="text-[10px] text-zinc-400 mt-0.5">{log.date}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className={cn('text-sm font-bold font-mono block', log.amount.startsWith('+') ? 'text-emerald-400' : 'text-pink-400')}>
-                      {log.amount}
-                    </span>
-                    <span className="text-[10px] text-zinc-500">{log.status}</span>
-                  </div>
+              {loadingLogs && logs.length === 0 ? (
+                <div className="flex items-center justify-center gap-2 py-8 text-zinc-400 text-xs">
+                  <Loader2 className="w-4 h-4 animate-spin" />加载变动明细…
                 </div>
-              ))}
+              ) : logs.length === 0 ? (
+                <div className="py-8 text-center text-xs text-zinc-500">暂无积分变动记录</div>
+              ) : (
+                logs.map(log => {
+                  const isGain = log.amount > 0;
+                  return (
+                    <div key={log.id} className="p-3 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between hover:bg-white/8 transition-colors">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0',
+                          isGain ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-pink-500/20 text-pink-400 border border-pink-500/30')}>
+                          {isGain ? '+' : '-'}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-white truncate">{log.description}</p>
+                          <p className="text-[10px] text-zinc-400 mt-0.5">{fmtCreditTime(log.created_at)}</p>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className={cn('text-sm font-bold font-mono block', isGain ? 'text-emerald-400' : 'text-pink-400')}>
+                          {isGain ? `+${log.amount}` : log.amount}
+                        </span>
+                        <span className="text-[10px] text-zinc-500">余额 {log.credits_after}</span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           )}
         </div>

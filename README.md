@@ -2,17 +2,11 @@
 
 ## AI软件赛道 - 跨境电商AIGC带货视频创作平台 - 晓梦AGI
 
-[![React](https://img.shields.io/badge/React-18.3-61dafb?logo=react&logoColor=black)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Vite](https://img.shields.io/badge/Vite-5.4-646cff?logo=vite&logoColor=white)](https://vitejs.dev)
-[![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.4-38bdf8?logo=tailwindcss&logoColor=black)](https://tailwindcss.com)
-[![shadcn/ui](https://img.shields.io/badge/shadcn%2Fui-Radix-000000?logo=shadcnui&logoColor=white)](https://ui.shadcn.com)
-[![Vue](https://img.shields.io/badge/Vue-3.5-42b883?logo=vue.js&logoColor=white)](https://vuejs.org)
-[![ElementPlus](https://img.shields.io/badge/Element%20Plus-2.9-409eff?logo=element&logoColor=white)](https://element-plus.org)
-[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL%2BRLS%2Bpgvector-3ecf8e?logo=supabase&logoColor=white)](https://supabase.com)
-[![Python](https://img.shields.io/badge/Python-FastAPI%2BFastMCP-3776ab?logo=python&logoColor=white)](https://fastapi.tiangolo.com)
-[![MCP](https://img.shields.io/badge/MCP-FastMCP%207%20Tools-orange?logo=modelcontextprotocol&logoColor=white)](https://modelcontextprotocol.io)
-[![pnpm](https://img.shields.io/badge/pnpm-10.3-F69220?logo=pnpm&logoColor=white)](https://pnpm.io)
+[![Frontend](https://img.shields.io/badge/Frontend-React_18_%C2%B7_Vue_3_%C2%B7_TS_5.7_%C2%B7_Vite_5.4-61dafb?logo=react&logoColor=black)](https://react.dev)
+[![UI](https://img.shields.io/badge/UI-Tailwind_%C2%B7_shadcn/Radix_%C2%B7_Element_Plus-38bdf8?logo=tailwindcss&logoColor=black)](https://tailwindcss.com)
+[![Backend](https://img.shields.io/badge/Backend-Supabase_%C2%B7_FastAPI_%C2%B7_Deno_Edge-3ecf8e?logo=supabase&logoColor=white)](https://supabase.com)
+[![MCP](https://img.shields.io/badge/MCP-FastMCP_%C2%B7_7_Tools-orange?logo=modelcontextprotocol&logoColor=white)](https://modelcontextprotocol.io)
+[![Tooling](https://img.shields.io/badge/Tooling-pnpm_10.3_%C2%B7_Biome_%C2%B7_Vite-F69220?logo=pnpm&logoColor=white)](https://pnpm.io)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 
 🌐 **在线 Demo**：<https://f.playe.top> ｜ 📄 [项目评分分析](./评分.md) ｜ 🧪 [测试用例与结果](./doc/TEST_CASES.md)

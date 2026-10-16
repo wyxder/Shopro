@@ -1,4 +1,4 @@
-# 🛒 Shopro AI -抖音/TikTok电商AIGC带货视频创作平台
+# 🛒 Shopro AI -跨境电商AIGC带货视频创作平台
 
 <p align="center">
   <img alt="React" src="https://img.shields.io/badge/React-18.3.1-61DAFB?logo=react&logoColor=white" />
@@ -13,6 +13,14 @@
   <img alt="Audio" src="https://img.shields.io/badge/Audio-CosyVoice2_TeleSpeech-orange" />
   <img alt="Video" src="https://img.shields.io/badge/Video-Seedance_2.0-violet" />
 </p>
+
+<div align="center">
+
+🌐 **商家创作端**：<https://f.playe.top> ｜ 🏢 **厂商运营中台**：<https://shopro-backend.netlify.app> ｜ 📄 **产品 PRD**：[doc/PRD.md](./doc/PRD.md)
+
+🗺️ **系统架构与测试**：[doc/系统架构与测试汇总.md](./doc/系统架构与测试汇总.md) ｜ 🧪 **测试用例**：[doc/TEST_CASES.md](./doc/TEST_CASES.md) ｜ 💳 **支付宝接入**：[doc/支付.md](./doc/支付.md)
+
+</div>
 
 ---
 
@@ -57,13 +65,16 @@
 
 | 分类 | 技术/服务 | 说明 | 项目中的作用 |
 |---|---|---|---|
-| 云服务 BaaS | Supabase | Auth、DB、Storage、Edge Functions | 商家端全栈后端云服务托管 |
+| 云服务 BaaS | Supabase | Auth、DB、Storage、Edge Functions (22个微函数) | 商家端全栈后端云服务托管 |
 | 厂商后端标准 | Spring Boot | 3.x REST Server | 厂商后台 REST API (`/api/admin/**`) 生产接入标准 |
-| 数据库 | PostgreSQL | 由 Supabase 托管 | RLS 物理数据隔离，pgvector 向量模糊搜索 |
-| 账户认证 | Supabase Auth / JWT | 邮箱/手机登录与 JWT 会话 | 商家端与厂商后台 RBAC 权限校验与 Token 刷新 |
-| 边缘计算 | Supabase Edge Functions | Deno 运行时 | AI 编排、支付闭环、竞品抓取、团队协作接口 |
+| 数据库 | PostgreSQL | 由 Supabase 托管，28 个增量迁移脚本 | RLS 物理数据隔离，pgvector 向量模糊搜索 |
+| 账户认证 | Supabase Auth / JWT | 邮箱/手机验证码登录与 JWT 会话 | 商家端与厂商后台 RBAC 权限校验与 Token 刷新 |
+| 边缘计算 | Supabase Edge Functions | Deno 运行时 (22 个微服务) | AI 编排、双轨支付闭环、竞品抓取、团队协作接口 |
 | 实时流式 | SSE + eventsource-parser | 前端 `src/lib/sse.ts` 封装 | 实现打字机流式（SSE）文本响应解析 |
-| 积分流水 | `deductUserCredits` + `credit_logs` | `src/hooks/useCredits.ts` | 真实扣减积分余额、全站事件广播并写入消费明细 |
+| 积分流水 | 原子扣费 RPC + `credit_logs` | `supabase/schema.sql` + `useCredits.ts` | 真实扣减积分余额、排他锁防并发扣费、全站广播审计 |
+| 支付体系 | 支付宝 AI 付 + 微信支付 | 网站支付 / WAP / Webhook 回调验签 | 完整的商业充值与履约保障，公私钥签名与回调验签 |
+| AI 代理网关 | Python / FastAPI | Vercel Serverless (`/api/dxkp`, `/api/mcp`) | 第三方多模型 API 密钥物理隔离透传与 MCP 契约传输 |
+| 开放生态 | MCP (FastMCP) | Python FastMCP，7 大工具契约封装 | 外部智能体（Claude / GPT）标准化调用视频创作全流程 |
 | 统一 API 契约 | `ApiResponse<T>` / `PageResult<T>` | `{ code, message, data, traceId }` | 前后端统一响应外层结构与分页传输格式 |
 
 ### 🤖 AI 服务与多模态模型
@@ -164,26 +175,50 @@ Shopro AI/
 │   └── types/
 │       ├── types.ts               # 数据模型 (Product, Material, CreditLog, Job...)
 │       └── route.ts               # 路由定义
+├── api/                           # 🐍 Python FastAPI 无服务器代理 (Vercel Serverless)
+│   ├── dxkp.py                    #    dxkp.ai 模型网关物理隔离代理
+│   └── mcp.py                     #    MCP JSON-RPC HTTP 流式代理
+├── mcp/                           # 🔌 MCP 开放生态 (FastMCP 智能体接入)
+│   ├── tools.json                 #    7 大 AI 工具契约定义
+│   ├── mcp_shopro_server.py       #    HTTP/SSE 传输服务
+│   ├── mcp_shopro_server_stdio.py #    本地 stdio 传输服务
+│   └── docker-compose.mcp.yml     #    容器化部署编排
+├── doc/                           # 📚 项目核心交付物与规范文档
+│   ├── system_architecture.svg    #    五层全景系统架构图
+│   ├── agent_workflow.svg         #    双重决策全链路 Agent 工作流图
+│   ├── PRD.md                     #    产品需求规格说明书
+│   ├── 系统架构与测试汇总.md       #    全景系统架构与用例汇总
+│   ├── TEST_CASES.md              #    23 个全链路实测测试用例
+│   ├── 评分.md                    #    比赛评分标准与自评报告
+│   ├── 加分.md                    #    交付清单加分项核验
+│   └── 支付.md                    #    支付宝 AI 付与双轨支付方案
 ├── supabase/
-│   ├── functions/                 # 16 个 Deno 边缘函数微服务
-│   │   ├── ai-assistant/          # 统一 AI 网关，内置 llm 动作控制
+│   ├── functions/                 # ⚡ 22 个 Deno 边缘函数微服务
+│   │   ├── ai-assistant/          # 统一 AI 网关，内置 LLM 编排与模型路由
 │   │   ├── deepseek-v4-pro/       # DeepSeek V4 文本生成代理 (带 API Fallback)
-│   │   ├── stepaudio/             # StepAudio 2.5 ASR 和 TTS 物理代理
-│   │   ├── seedance/              # Seedance 2.0 异步视频生成/状态查询
+│   │   ├── glm-5-3-flash/         # GLM 5.3 Flash 极速文本代理
+│   │   ├── siliconflow-audio/     # CosyVoice2-0.5B 情感化语音合成
+│   │   ├── stepaudio/             # StepAudio 2.5 ASR / TeleSpeechASR 语音转写
+│   │   ├── seedance/              # Seedance 2.0 异步视频生成与轮询
+│   │   ├── alipay-payment-order/  # 支付宝 AI 付创建支付订单
+│   │   ├── alipay-payment-notify/ # 支付宝异步支付回调验签与充值入账
+│   │   ├── alipay-trade-query/    # 支付宝交易订单状态轮询
+│   │   ├── alipay-trade-ops/      # 支付宝退款与异常交易处置
+│   │   ├── create-payment-order/  # 微信支付订单创建与二维码
+│   │   ├── wechat-payment-webhook/# 微信支付成功回调验签
 │   │   ├── phase3-assistant/      # 竞品抓取、直播分析、团队、APIKey、发布管理
-│   │   ├── create-payment-order/  # 创建微信支付订单及二维码生成
-│   │   ├── wechat-payment-webhook/# 微信支付成功回调验签及充值入账
-│   │   ├── query-payment-status/  # 支付轮询查询接口
 │   │   ├── kling-video-create/    # 可灵视频任务创建
 │   │   ├── kling-video-query/     # 可灵视频任务查询
 │   │   ├── minimax-chat/          # MiniMax 接口代理
 │   │   ├── sora-video-create/     # Sora 视频任务创建
 │   │   ├── sora-video-query/      # Sora 视频任务查询
-│   │   ├── send-sms-code/         # 验证码发送 (短信服务集成)
+│   │   ├── send-sms-code/         # 验证码短信服务集成
 │   │   ├── verify-sms-code/       # 验证码登录验证
 │   │   ├── wenxin-text-generation/# 百度文心代理 Edge Function
-│   │   └── setup-demo/            # 演示数据初始化种子数据
-│   └── migrations/                # 21 个 PostgreSQL 数据库迁移文件 (含 RLS 及防薅 RPC 锁)
+│   │   ├── setup-demo/            # 演示数据初始化种子数据
+│   │   └── _shared/               # 共享安全鉴权、密钥校验与错误处理中间件
+│   ├── migrations/                # 🗄️ 28 个 PostgreSQL 数据库迁移文件 (含 RLS、原子扣费 RPC、防薅锁、优惠券核销)
+│   └── schema.sql                 # 全量生产表结构、视图、触发器与 RPC 基线
 ```
 
 ---

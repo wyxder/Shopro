@@ -9,7 +9,7 @@
 [![Tooling](https://img.shields.io/badge/Tooling-pnpm_10.3_%C2%B7_Biome_%C2%B7_Vite-F69220?logo=pnpm&logoColor=white)](https://pnpm.io)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 
-🌐 **在线 Demo**：<https://f.playe.top> ｜ 📄 [项目评分分析](./评分.md) ｜ 🧪 [测试用例与结果](./doc/TEST_CASES.md)
+🌐 **在线 Demo**：<https://f.playe.top> ｜ 📄 [项目评分分析](./doc/评分.md) ｜ 🧪 [测试用例与结果](./doc/TEST_CASES.md)
 
 </div>
 
@@ -335,7 +335,7 @@ docker compose -f docker-compose.mcp.yml up     # 或容器化 HTTP/SSE 模式�
 
 ## 🏗️ 系统架构与测试汇总
 
-> 完整版见 [系统架构与测试汇总.md](./系统架构与测试汇总.md)
+> 完整版见 [系统架构与测试汇总.md](./doc/系统架构与测试汇总.md)
 
 ### 系统架构图
 
@@ -431,7 +431,7 @@ docker compose -f docker-compose.mcp.yml up     # 或容器化 HTTP/SSE 模式�
 
 ## 🏆 项目评分分析
 
-> **评分依据**：比赛评分细则（评分维度与权重 / 加分项与减分项 / 建议提交交付物）｜完整版见 [评分.md](./评分.md)
+> **评分依据**：比赛评分细则（评分维度与权重 / 加分项与减分项 / 建议提交交付物）｜完整版见 [评分.md](./doc/评分.md)
 
 ### 评分维度对照（满分 100 分）
 

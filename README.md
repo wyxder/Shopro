@@ -1,216 +1,300 @@
-<div align="center">
+# 🛒 Shopro AI -抖音/TikTok电商AIGC带货视频创作平台
 
-## Shopro- 跨境电商AIGC带货视频创作平台
-
-[![Frontend](https://img.shields.io/badge/Frontend-React_18_%C2%B7_Vue_3_%C2%B7_TS_5.7_%C2%B7_Vite_5.4-61dafb?logo=react&logoColor=black)](https://react.dev)
-[![UI](https://img.shields.io/badge/UI-Tailwind_%C2%B7_shadcn/Radix_%C2%B7_Element_Plus-38bdf8?logo=tailwindcss&logoColor=black)](https://tailwindcss.com)
-[![Backend](https://img.shields.io/badge/Backend-Supabase_%C2%B7_FastAPI_%C2%B7_Deno_Edge-3ecf8e?logo=supabase&logoColor=white)](https://supabase.com)
-[![MCP](https://img.shields.io/badge/MCP-FastMCP_%C2%B7_7_Tools-orange?logo=modelcontextprotocol&logoColor=white)](https://modelcontextprotocol.io)
-[![Tooling](https://img.shields.io/badge/Tooling-pnpm_10.3_%C2%B7_Biome_%C2%B7_Vite-F69220?logo=pnpm&logoColor=white)](https://pnpm.io)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
-
-🌐 **在线 Demo**：<https://f.playe.top> ｜ 📄 [项目评分分析](./doc/评分.md) ｜ 🧪 [测试用例与结果](./doc/TEST_CASES.md)
-
-</div>
+<p align="center">
+  <img alt="React" src="https://img.shields.io/badge/React-18.3.1-61DAFB?logo=react&logoColor=white" />
+  <img alt="Vue 3" src="https://img.shields.io/badge/Vue-3.5.13-4FC08D?logo=vuedotjs&logoColor=white" />
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.7.2-3178C6?logo=typescript&logoColor=white" />
+  <img alt="Vite" src="https://img.shields.io/badge/Vite-6.0.7-646CFF?logo=vite&logoColor=white" />
+  <img alt="TailwindCSS" src="https://img.shields.io/badge/TailwindCSS-3.4.11-06B6D4?logo=tailwindcss&logoColor=white" />
+  <img alt="Element Plus" src="https://img.shields.io/badge/Element_Plus-2.9.1-409EFF?logo=elementplus&logoColor=white" />
+  <img alt="Supabase" src="https://img.shields.io/badge/Supabase-2.103.1-3FCF8E?logo=supabase&logoColor=white" />
+  <img alt="Spring Boot" src="https://img.shields.io/badge/Spring_Boot-3.x-6DB33F?logo=springboot&logoColor=white" />
+  <img alt="AI" src="https://img.shields.io/badge/AI-DeepSeek_v4_Flash-blue" />
+  <img alt="Audio" src="https://img.shields.io/badge/Audio-CosyVoice2_TeleSpeech-orange" />
+  <img alt="Video" src="https://img.shields.io/badge/Video-Seedance_2.0-violet" />
+</p>
 
 ---
 
-## 📋 项目简介
+## 💎 项目简介
+<img width="1280" height="705" alt="image" src="https://github.com/user-attachments/assets/8a2b2a47-b8a1-4b46-9a7a-efb9c1f16564" />
+<img width="1280" height="679" alt="image" src="https://github.com/user-attachments/assets/cf2db694-ed54-4606-b7ca-6ff22854d3fb" />
+<img width="1673" height="901" alt="image" src="https://github.com/user-attachments/assets/81e57fba-298c-41dc-aa94-c68a66cee6fb" />
 
-**Shopro AI** 是面向抖音 / TikTok / 小红书 / Amazon 等电商平台的 **AIGC 带货短视频一站式 SaaS 创作平台**，通过多模态大模型与全链路智能工作流，打通「**商品输入 → 脚本生成 → 数字人合成 → 视频渲染 → 跨平台发布 → 数据回流**」的商业闭环，将传统「文案 + 拍摄 + 剪辑 + 翻译 + 运营」五人工作流压缩为「一人 + AI」：
+**Shopro-AI 电商 AIGC 带货视频系统** 是一款面向国内外电商商家（如抖音、TikTok、小红书、Amazon、Shopee 等）的商业化 SaaS 平台。该系统通过深度融合先进的多模态大模型与全链路智能工作流，解决商家在短视频营销中面临的“文案撰写难、数字人/外籍演员贵、剪辑成本高、多语言本地化差、跨平台发布繁琐”等核心痛点。
 
-- 💸 **极致降本**：单条视频综合成本 < 1 元（10 积分 = 1 元）
-- ⚡ **极速出片**：3~5 分钟产出一条成品带货视频
-- 📊 **数据驱动**：ROI 预测 + A/B 测试 + 投放数据回流自学习
-- 🏢 **双端企业级**：商家创作端（React）+ 厂商运营中台（Vue）+ MCP 开放生态（Python）
+系统构建了**商家端创作系统（C端/B端） + 厂商运营后台管理中台（Shopro-backend）** 的双端企业级解耦架构：
+1. **商家创作端**：支持从「商品信息输入/URL 卖点提取 ➔ AI 智能脚本生成 ➔ 数字人选择与克隆 ➔ 多语言智能翻译 ➔ 分镜编辑 ➔ 素材混剪 ➔ 视频异步合成 ➔ 真实积分扣除与日志审计 ➔ 多平台一键发布与数据回流」的完整商业闭环，将传统的五人工作流压缩为“一人 + AI”，帮助商家以极低成本高速量产高转化的爆款短视频。
+2. **厂商运营端**：提供企业级多租户 SaaS 运维中台，覆盖运营总览、算力积分调账、AI 工作流 Attempt 尝试级追踪与退款、内容风控证据链审计、订单与套餐版本快照及 MSW 零成本演示重置。
 
-> 🗺️ 全景参考：[系统架构图](./doc/system_architecture.svg) ｜ [Agent 工作流图](./doc/agent_workflow.svg)
+### ⚡ 核心价值与特色
+*   **极致降本**：无需聘请外籍主播与剪辑师，注册送 50 初始积分，生成单条视频消耗 10 积分（10 积分 = 1 元），综合成本降至不足 1 元。
+*   **极致增效**：从商品 URL 到生成多语种情感数字人口播视频仅需 3-5 分钟。
+*   **转化导向**：引入营销学“说服框架”，对文案进行 CoT 分层打标签，自动映射数字人情绪。
+*   **数据驱动**：集成 ROI 预测、A/B 分镜测试及投放数据回流闭环，越用越聪明。
+*   **全自适应体验**：高精度的暗色/浅色玻璃态 UI，支持移动端和桌面端无缝响应。
 
 ---
 
 ## 🛠️ 技术栈
 
-### 🎨 前端（商家创作端 + 厂商运营后台）
+### 🌐 前端技术栈
 
-| 类别 | 技术选型 | 说明 |
-|---|---|---|
-| 核心框架 | React 18.3 + TypeScript 5.7（商家端）· Vue 3.5 + TS（运营端） | 双端解耦，强类型约束 |
-| 构建工具 | Vite 5.4（SWC 编译）+ Manual Chunks 分包 | 极速 HMR 与按需懒加载 |
-| UI 体系 | TailwindCSS 3.4 + Radix UI（shadcn 风格）+ Element Plus 2.9 + framer-motion | 原子化布局、玻璃态双主题、高精度动效 |
-| 状态与数据 | @tanstack/react-query 5 + Context（商家端）· Pinia（运营端） | 异步缓存、乐观更新、Auth 会话 |
-| 路由 | react-router-dom 6（受保护路由 + 懒加载） | 43 个页面模块 |
-| 数据可视化 | Recharts（商家端）+ ECharts（运营端） | 流量看板、漏斗图、履约趋势 |
-| 流式渲染 | SSE + eventsource-parser | AI 脚本打字机输出 |
-| 代码质量 | Biome + tsgo 类型检查 + 自定义规则校验（`.rules/`） | Lint / 格式化 / 构建自检管线 |
+| 分类 | 技术/依赖 | 版本/说明 | 用途 |
+|---|---|---:|---|
+| 核心框架 | React / Vue | 18.3.1 / 3.5.13 | 商家创作端 (React 18) 与 厂商运营后台 (Vue 3) |
+| 开发语言 | TypeScript | 5.7.2 | 全链路强类型约束，提升工程可维护性 |
+| 构建工具 | Vite | 6.0.7 / 5.4.1 | 极速热更新，生产资源打包优化与 Manual Chunks 分包 |
+| 路由管理 | react-router-dom / Vue Router | 6.26.2 / 4.5.0 | 单页路由、受保护路由及 RBAC 权限路由守卫 |
+| 状态/异步 | @tanstack/react-query / Pinia | 5.56.2 / 2.3.0 | 异步数据缓存、全局 Auth 会话与乐观更新 |
+| UI 组件 | Radix UI + Element Plus | 基础组件 / 2.9.1 | 商家端组件与厂商后台企业级表格/表单/仪表盘 |
+| 样式系统 | Tailwind CSS / Vanilla CSS | 3.4.11 / CSS3 | 原子化布局、高精度玻璃态与后台全局主题覆盖 |
+| 动画与图表 | framer-motion / Recharts / ECharts | 12.4.10 / 5.6.0 | 页面动效、商家端流量看板与厂商履算趋势折线图/环形图 |
+| API 模拟 | MSW (Mock Service Worker) | 2.7.0 | 厂商后台 Service Worker 请求拦截与浏览器端数据持久化 |
+| 代码质量 | Biome / tsgo | 2.4.5 / 0.0.1 | 极速 Lint、格式化及预构建类型检查 |
 
-### ⚙️ 后端与数据层
+### ⚙️ 后端与数据服务
 
-| 类别 | 技术选型 | 说明 |
-|---|---|---|
-| BaaS 云服务 | Supabase（Auth / PostgreSQL / Storage / Edge Functions） | 商家端全栈托管，Deno 边缘计算 ×23 个微函数 |
-| 数据库 | PostgreSQL + RLS 行级安全 + pgvector 向量检索 | 26 个迁移脚本；原子扣费 RPC + `credit_logs` 审计 |
-| 认证授权 | Supabase Auth / JWT · 手机验证码 + 邮箱登录 · RBAC | 团队空间与角色权限 |
-| AI 代理服务 | Python / FastAPI（ASGI，Vercel Serverless） | `api/dxkp.py`、`api/mcp.py` 第三方模型密钥隔离透传 |
-| 开放协议 | Model Context Protocol（Python FastMCP） | 7 大 AI 工具封装，HTTP/SSE + stdio 双传输，Docker 部署 |
-| 支付集成 | 支付宝 AI 付（网站支付）+ 微信支付 Webhook | 下单 / 回调验签 / 查单 / 退款全链路 Edge Functions |
-| 文件存储 | Supabase Storage + CDN | 视频成片、首帧封面、数字人形象、素材库 |
-| 部署 | Vercel（前端 + Python 函数）+ Supabase 云端托管 | `vercel.json` 网关代理重写 + SPA fallback |
-
-### 🤖 AI 服务矩阵
-
-| 能力域 | 主通道模型 | 备份 / 降级链 | 用途 |
+| 分类 | 技术/服务 | 说明 | 项目中的作用 |
 |---|---|---|---|
-| 🧠 文本 / 脚本 | GLM-5.3-Flash（Sophnet）· DeepSeek-V4-Flash | dxkp.ai → SiliconFlow → 文心一言 | CoT 四层脚本、卖点提取、翻译、竞品分析、内容审核 |
-| 🎙️ 语音合成 | CosyVoice2-0.5B（SiliconFlow） | StepAudio · MiniMax 音频 | 50+ 语种情感配音 |
-| 🎤 语音识别 | TeleSpeechASR | — | 口播录音转写、直播高光识别 |
-| 🎬 视频生成 | Seedance 2.0 Mini（Tokendance 网关） | MiniMax H3 · Wan3.0 Prime · HappyHorse 1.1 · Kling V3 · Sora | 首尾帧 + 声轨异步渲染 |
-| 🖼️ 图像生成 | Flux 1.1 Pro | SiliconFlow 图像通道 | AI 封面候选、数字人形象克隆 |
-| 🔎 向量嵌入 | Ada-002 Embedding（pgvector 存储） | — | 知识库 RAG 高分脚本 Few-shot 增强 |
+| 云服务 BaaS | Supabase | Auth、DB、Storage、Edge Functions | 商家端全栈后端云服务托管 |
+| 厂商后端标准 | Spring Boot | 3.x REST Server | 厂商后台 REST API (`/api/admin/**`) 生产接入标准 |
+| 数据库 | PostgreSQL | 由 Supabase 托管 | RLS 物理数据隔离，pgvector 向量模糊搜索 |
+| 账户认证 | Supabase Auth / JWT | 邮箱/手机登录与 JWT 会话 | 商家端与厂商后台 RBAC 权限校验与 Token 刷新 |
+| 边缘计算 | Supabase Edge Functions | Deno 运行时 | AI 编排、支付闭环、竞品抓取、团队协作接口 |
+| 实时流式 | SSE + eventsource-parser | 前端 `src/lib/sse.ts` 封装 | 实现打字机流式（SSE）文本响应解析 |
+| 积分流水 | `deductUserCredits` + `credit_logs` | `src/hooks/useCredits.ts` | 真实扣减积分余额、全站事件广播并写入消费明细 |
+| 统一 API 契约 | `ApiResponse<T>` / `PageResult<T>` | `{ code, message, data, traceId }` | 前后端统一响应外层结构与分页传输格式 |
+
+### 🤖 AI 服务与多模态模型
+
+| 模块/能力 | 对接模型 | 调用入口 / SDK | 用途与优势 |
+|---|---|---|---|
+| **文本大模型** | **DeepSeek-V4-Flash** | `/functions/v1/deepseek-v4-flash` | 营销文案、多语种翻译、商品特征解析、NLP情感极值标注 |
+| **语音大模型** | **CosyVoice2 / TeleSpeech** | `/functions/v1/siliconflow-audio` | `CosyVoice2-0.5B` 情感化语音合成，`TeleSpeechASR` 录音高精度转录 |
+| **视频生成** | **Seedance 2.0** | `/functions/v1/seedance` (submit/query) | `seedance-2-0-fast-260128` 物理级高画质多模态短视频生成与图生视频 |
+| **图像/封面** | **Flux 1.1 Pro** | `ai-assistant` (generate_cover) | 竖版高分辨率带货短视频封面设计及图生图参考 |
+| **备份视频** | Kling / Sora | `/functions/v1/kling-video-create` / `sora` | 备用高端概念短片生成与转场渲染 |
+| **备份对话** | MiniMax-M3 | `/functions/v1/minimax-chat` | 备用聊天模型与目标受众痛点推导 |
+| **百度代理** | 文心一言 (Wenxin) | `/functions/v1/wenxin-text-generation` | 自动后备文本代理生成 |
+| **向量搜索** | OpenAI Text-Embedding-Ada-002 | RAG 向量知识库 / RPC | 将高分脚本与话术进行 Few-shot 匹配增强 |
 
 ---
 
-## 📁 目录结构
+## 📁 目录结构与 42 个核心页面
 
+```text
+Shopro AI/
+├── Shopro-backend/                 # 🏢 厂商运营后台管理系统 (Vue 3 + Element Plus + MSW / Spring Boot)
+│   └── Shopro-backend-main/        # 厂商后台源码、API 模块与 MSW 模拟引擎
+│       ├── src/api/                # 厂商后台 REST API (auth, billing, credits, risk, system...)
+│       ├── src/views/              # 8 大业务域运营管理页面 (Dashboard, Users, AI-Ops, Risk...)
+│       ├── src/mocks/              # MSW 浏览器端 Mock 数据库与状态重置引擎
+│       ├── README.md               # 厂商运营后台详细技术与架构设计文档
+│       └── README1.md              # 厂商运营后台全量评估标准文档
+├── public/
+│   └── Shopro.mp4                 # 官网最新 1080P 高清全流程带货实操演示视频
+├── src/
+│   ├── App.tsx                    # 应用根组件，挂载 React-Query、AuthProvider、Toaster
+│   ├── routes.tsx                 # 页面路由配置 (受保护路由与公开路由)
+│   ├── main.tsx                   # React 项目打包入口
+│   ├── index.css                  # 全局样式，包含 Tailwind 与玻璃态主题变量
+│   ├── components/                # 业务公共组件
+│   │   ├── layouts/
+│   │   │   └── MainLayout.tsx     # 核心主布局，实现全局搜索、积分余额显示、侧边栏及主题切换
+│   │   ├── ui/                    # shadcn 风格原子级组件 (Button, Dialog, Badge, Input...)
+│   │   ├── CoverCandidates.tsx    # AI 封面多候选展示与下载
+│   │   └── ...
+│   ├── contexts/
+│   │   └── AuthContext.tsx        # Supabase Session 状态管理
+│   ├── db/
+│   │   └── supabase.ts            # Client 单例初始化
+│   ├── hooks/
+│   │   ├── use-mobile.tsx         # 移动端断点检测
+│   │   ├── use-toast.ts           # Toast 通知
+│   │   ├── useCredits.ts          # 积分余额实时查询、deductUserCredits 真实扣除与广播
+│   │   └── useDraft.ts            # 页面内容本地缓存恢复
+│   ├── lib/
+│   │   ├── audioRecorder.ts       # 麦克风录音控制 (配合 StepAudio ASR)
+│   │   ├── sse.ts                 # SSE 流式解析及 StepAudio / Seedance API 轮询
+│   │   └── utils.ts               # CSS 样式合并等辅助函数
+│   ├── pages/                     # 业务页面 (42个核心页面及子页面)
+│   │   ├── LandingPage.tsx        # 品牌官网首页，播放 public/Shopro.mp4 1080P 实操演示
+│   │   ├── LoginPage.tsx          # 登录注册页面 (支持验证码与密码双重认证)
+│   │   ├── DashboardPage.tsx      # 工作台主页，展示快捷入口、生成历史和关键指标
+│   │   ├── HomePage.tsx           # 视频生成工作流 (含「参考/商品/数字人/首尾帧」选品自动装载与 10 积分扣除)
+│   │   ├── VideoCreatePage.tsx    # 视频生成配置中心 (向导式生成与积分扣减)
+│   │   ├── VideoEditPage.tsx      # 可视化多轨道分镜编辑器 (字幕轨、人像轨、声轨)
+│   │   ├── WorksPage.tsx          # 作品管理，包含合成进度及视频第一帧真实封面持久化
+│   │   ├── MaterialsPage.tsx      # 素材库管理 (支持分类上传及删除)
+│   │   ├── ProductsPage.tsx       # 商品管理，URL/口令多模态解析导入与「创建视频」跨页直连选品
+│   │   ├── ProductSelectionPage.tsx# 智能选品工坊，16国真实选品矩阵与第三方数据引擎接入中心
+│   │   ├── AvatarsPage.tsx        # 数字人库，支持上传头像图片及 StepAudio TTS 试听
+│   │   ├── TemplatesPage.tsx      # 视频模板库，一键套用带货模板
+│   │   ├── ScriptPage.tsx         # 脚本管理，可在此独立撰写、导出
+│   │   ├── StyleCopyPage.tsx      # 爆款风格复刻页，输入竞品链接自动抽取节奏
+│   │   ├── KnowledgePage.tsx      # 品牌/商品知识库 (用于 RAG 检索 Few-shot)
+│   │   ├── CompetitorPage.tsx     # 竞品爆款监控分析
+│   │   ├── LiveHighlightPage.tsx  # 直播高光切片提取器
+│   │   ├── AnalyticsPage.tsx      # 流量漏斗、完播率及 ROI 分析图表
+│   │   ├── DataDashboardPage.tsx  # 商业数据洞察全景看板 (大盘核心指标与趋势图)
+│   │   ├── ProfilePage.tsx        # 个人中心及账号安全设置
+│   │   ├── CreditsPage.tsx        # 积分商城与充值收银台 (真实展现 credit_logs 收支明细)
+│   │   ├── OrderDetailPage.tsx    # 微信支付订单状态页
+│   │   ├── PromptTemplatesPage.tsx# 系统 Prompt 策略管理页
+│   │   ├── ActivitiesPage.tsx     # 操作日志与审计足迹
+│   │   ├── InvitePage.tsx         # 邀请有礼推广页面
+│   │   ├── PublishPage.tsx        # 跨平台多端发布 (抖音/TikTok/小红书/快手/B站排期发布)
+│   │   ├── ABTestPage.tsx         # A/B 测试管理中心 (脚本/封面版本对比)
+│   │   ├── EmotionAnalysisPage.tsx# NLP 情绪分析与时间轴对齐工作区
+│   │   ├── MultiLangPage.tsx      # 多语言翻译控制台
+│   │   ├── TaskQueuePage.tsx      # 视频生成异步任务队列监控
+│   │   ├── ExportFormatsPage.tsx  # 跨平台多格式导出 (Excel/PDF/视频)
+│   │   ├── LLMCachePage.tsx       # AI 缓存命中率监控与管理
+│   │   ├── TeamSpacePage.tsx      # 团队协作空间 (角色权限、协作管理)
+│   │   ├── OpenAPIPage.tsx        # 开放开发平台 (API Key 生成与 API 调试)
+│   │   ├── DataFeedbackPage.tsx   # 广告回流与自学习面板
+│   │   ├── TrendingPatternsPage.tsx# 千万级热门爆款视频模式分析
+│   │   ├── PersonalizePage.tsx    # 账号私有风格模型定制微调
+│   │   ├── BatchCreatePage.tsx    # 批量生成管理器 (批量计算并扣除积分)
+│   │   ├── AiToolboxPage.tsx      # 营销 AI 工具箱 (关键词提取、字幕打点等)
+│   │   ├── NotificationsPage.tsx  # 系统通知中心
+│   │   ├── Index.tsx              # 根路径重定向索引页
+│   │   └── NotFound.tsx           # 404 兜底页
+│   └── types/
+│       ├── types.ts               # 数据模型 (Product, Material, CreditLog, Job...)
+│       └── route.ts               # 路由定义
+├── supabase/
+│   ├── functions/                 # 16 个 Deno 边缘函数微服务
+│   │   ├── ai-assistant/          # 统一 AI 网关，内置 llm 动作控制
+│   │   ├── deepseek-v4-pro/       # DeepSeek V4 文本生成代理 (带 API Fallback)
+│   │   ├── stepaudio/             # StepAudio 2.5 ASR 和 TTS 物理代理
+│   │   ├── seedance/              # Seedance 2.0 异步视频生成/状态查询
+│   │   ├── phase3-assistant/      # 竞品抓取、直播分析、团队、APIKey、发布管理
+│   │   ├── create-payment-order/  # 创建微信支付订单及二维码生成
+│   │   ├── wechat-payment-webhook/# 微信支付成功回调验签及充值入账
+│   │   ├── query-payment-status/  # 支付轮询查询接口
+│   │   ├── kling-video-create/    # 可灵视频任务创建
+│   │   ├── kling-video-query/     # 可灵视频任务查询
+│   │   ├── minimax-chat/          # MiniMax 接口代理
+│   │   ├── sora-video-create/     # Sora 视频任务创建
+│   │   ├── sora-video-query/      # Sora 视频任务查询
+│   │   ├── send-sms-code/         # 验证码发送 (短信服务集成)
+│   │   ├── verify-sms-code/       # 验证码登录验证
+│   │   ├── wenxin-text-generation/# 百度文心代理 Edge Function
+│   │   └── setup-demo/            # 演示数据初始化种子数据
+│   └── migrations/                # 21 个 PostgreSQL 数据库迁移文件 (含 RLS 及防薅 RPC 锁)
 ```
-Shopro/
-├── src/                              # 🎨 商家创作端（React 18 + TypeScript + Vite）
-│   ├── pages/                        #    43 个功能页面（react-router 懒加载 + 受保护路由）
-│   │   ├── HomePage.tsx              #    ├─ 🏠 工作台：DashboardPage · TaskQueuePage · NotificationsPage
-│   │   ├── VideoCreatePage.tsx       #    ├─ 🎬 创作主链路：ScriptPage · VideoEditPage · WorksPage
-│   │   ├── ScriptPage.tsx            #    │    · BatchCreatePage（批量）· TemplatesPage · CoverCandidates
-│   │   ├── ProductsPage.tsx          #    ├─ 🛍️ 商品与选品：ProductSelectionPage · CompetitorPage
-│   │   ├── AvatarsPage.tsx           #    ├─ 🎭 数字人与音频：EmotionAnalysisPage · MultiLangPage
-│   │   ├── CreditsPage.tsx           #    ├─ 💳 积分与支付：OrderDetailPage · AlipayReturnPage · InvitePage
-│   │   ├── AnalyticsPage.tsx         #    ├─ 📊 数据与增长：ABTestPage · DataFeedbackPage
-│   │   │                             #    │    · DataDashboardPage · TrendingPatternsPage · LiveHighlightPage
-│   │   ├── TeamSpacePage.tsx         #    ├─ 👥 团队与开放：OpenAPIPage · KnowledgePage · PromptTemplatesPage
-│   │   ├── AiToolboxPage.tsx         #    ├─ 🧰 AI 工具箱：StyleCopyPage · PersonalizePage · LLMCachePage
-│   │   │                             #    │    · ActivitiesPage · ExportFormatsPage · MaterialsPage
-│   │   ├── LandingPage.tsx           #    ├─ 🌍 门面与账号：LoginPage · ProfilePage · ForbiddenPage · NotFound
-│   │   └── ...（PublishPage · Index.tsx 等）
-│   ├── components/                   #    UI 组件层
-│   │   ├── ui/                       #    ├─ 57 个 shadcn/Radix 原子组件（dialog/select/sidebar/toaster…）
-│   │   │   ├── GlassCard.tsx         #    │    + 自研：玻璃态卡片 · 磁吸按钮 · 动态背景 · 脚本卡片
-│   │   │   └── platform-icons.tsx    #    │    + 多平台图标（抖音/TikTok/小红书/Amazon…）
-│   │   ├── common/                   #    ├─ 业务弹窗：CustomModelDialog（Portal 顶层化）
-│   │   │   └── PaymentDialog.tsx     #    │    · PaymentDialog 充值 · PlatformCredentialDialog 平台凭证
-│   │   ├── layouts/MainLayout.tsx    #    ├─ 主布局：侧边导航 + 移动端底部 Tab + 更多抽屉 + 安全区
-│   │   ├── Navbar.tsx / Footer.tsx   #    ├─ 官网区块：HeroSection · PricingSection · StatsSection 等
-│   │   ├── PlanGate.tsx              #    ├─ 套餐门禁：按 plan 拦截付费功能入口
-│   │   └── UrlProductImportDialog.tsx#    └─ URL/口令商品导入弹窗
-│   ├── api/                          #    Supabase 客户端封装
-│   │   ├── client.ts                 #    ├─ ky HTTP 基座 + 请求约定
-│   │   ├── products.ts               #    ├─ 商品 CRUD 与 URL/口令解析
-│   │   ├── video.ts                  #    ├─ 视频任务提交/轮询/多模型网关适配
-│   │   ├── credits.ts                #    ├─ 积分余额、原子扣费 RPC、流水读取
-│   │   └── alipay.ts                 #    └─ 支付宝 AI 付下单与回跳
-│   ├── lib/                          #    模型网关 SDK 与核心工具
-│   │   ├── minimax/ · wan3/          #    ├─ Tokendance 视频网关 SDK：MiniMax H3 · Wan3.0 Prime
-│   │   ├── seedancemini/ · happyhorse/#   ├─ Seedance 2.0 Mini · HappyHorse 1.1（DashScope 异步协议）
-│   │   ├── vectrust/                 #    └─ Vectrust 通道
-│   │   ├── creditGuard.ts            #    ⚡ 余额不足前置拦截（弹窗 + 生成阻断）
-│   │   ├── sse.ts                    #    ⚡ SSE 流式解析（打字机输出）
-│   │   ├── customModel.ts            #    ⚡ 自定义模型配置（BYOK）
-│   │   ├── videoFrame.ts             #    ⚡ 首帧截取（作品真实封面）
-│   │   └── audioRecorder.ts · utils.ts
-│   ├── contexts/AuthContext.tsx      #    认证会话（Supabase Auth + 短信/邮箱登录）
-│   ├── hooks/                        #    useCredits（全站余额广播）· useDraft · use-toast · use-mobile
-│   ├── services/audio/index.ts       #    音频服务抽象（TTS/ASR 统一入口）
-│   ├── types/                        #    route.ts · types.ts（ScriptScene/StyleReport 等领域类型）
-│   ├── db/supabase.ts                #    Supabase 连接层
-│   └── App.tsx · main.tsx · index.css #    路由装配 · 入口 · 主题（暗/亮玻璃态）
-├── backend/                          # 🏢 厂商运营中台（Vue 3 + Element Plus + Pinia + ECharts + MSW）
-│   ├── index.html · vite.config.ts   #    独立 Vite 子工程（vue-tsc 构建自检）
-│   ├── admin-architecture-spec.md    #    中台架构规格说明书
-│   └── 项目结构与功能模块说明.md       #    多租户/风控/调账/Attempt 追踪模块说明
-├── supabase/                         # ☁️ BaaS 云服务
-│   ├── functions/                    #    ⚡ 23 个 Edge Functions（Deno）
-│   │   ├── ai-assistant/             #    ├─ 视频生成主编排（脚本/增强/提交/退款）
-│   │   ├── deepseek-v4-pro/ · glm-5-3-flash/# ├─ 文本主通道与降级链（+ wenxin · minimax-chat）
-│   │   ├── seedance/ · kling-video-*/ · sora-video-*/ # ├─ 视频生成提交与查询
-│   │   ├── siliconflow-audio/ · stepaudio/    # ├─ TTS 情感配音 / ASR 转写
-│   │   ├── alipay-payment-order|notify/ · alipay-trade-query|ops/ # ├─ 支付宝 AI 付四件套
-│   │   ├── create-payment-order/ · wechat-payment-webhook/ # ├─ 微信/通用支付
-│   │   ├── send-sms-code/ · verify-sms-code/  # ├─ 短信认证
-│   │   ├── phase3-assistant/ · setup-demo/    # ├─ 开放平台助手 · 演示数据
-│   │   └── _shared/                  #    └─ 共享工具（鉴权/密钥读取/审计，缺失密钥返回 503）
-│   ├── migrations/                   #    🗄️ 26 个增量迁移（00001 认证建表 → 00009 扣费 RPC
-│   │   └── ...                       #    → 00022 RLS 加固+统一退款 RPC → 00023 AI 治理
-│   │                                 #    → 00025 积分端到端口径 → 00026 支付宝网站支付）
-│   ├── schema.sql                    #    全量表结构 + RLS + RPC + 触发器基线
-│   └── config.toml                   #    项目配置
-├── api/                              # 🐍 FastAPI 无服务器代理（Vercel Python Functions）
-│   ├── dxkp.py                       #    dxkp.ai 模型网关 ASGI 透传（密钥隔离）
-│   └── mcp.py                        #    MCP Streamable HTTP JSON-RPC 网关
-├── mcp/                              # 🔌 MCP 开放生态（Python FastMCP）
-│   ├── mcp_server.py · mcp_shopro_server.py        # HTTP/SSE 传输服务（Shopro 版/通用版）
-│   ├── mcp_server_stdio.py · mcp_shopro_server_stdio.py # stdio 本地智能体接入
-│   ├── tools.json                    #    7 大 AI 工具契约（卖点/脚本/翻译/TTS/增强/提交/查询）
-│   └── Dockerfile.mcp · docker-compose.mcp.yml     # 容器化部署
-├── doc/                              # 📚 项目文档
-│   ├── system_architecture.svg       #    系统架构图（五层全景）
-│   ├── agent_workflow.svg            #    Agent 工作流图（决策分支 + 工具链路）
-│   ├── TEST_CASES.md                 #    23 个测试用例与实测结果
-│   ├── ALIPAY_AIPAY_INTEGRATION.md   #    支付宝 AI 付接入文档
-│   ├── 支付.md · 竞品.md              #    支付方案与竞品调研
-│   └── fx.md · fx1.md                #    功能分析与改进建议（前端/后端/AI 三张表）
-├── scratch/                          # 🧪 16 个真实 API 联调探针（minimax/seedance/wan3/glm/
-│                                     #    happyhorse 各通道实测脚本，可复验 AI 调用真实性）
-├── public/                           # 🖼️ 静态资源（Video 模板与封面 · covers · shop 商品图 · person）
-├── .rules/ · .agents/                # ✅ 自定义质量规则（Biome yml 规则 + lint/test 脚本）与 Agent 规范
-├── clipforge/ · skill-creator/       # 🧩 附属子模块（视频剪辑引擎 / Skill 工具链）
-├── vercel.json                       # 🚀 部署配置：AI 网关代理重写 + SPA fallback
-├── vite.config.ts · vite.config.dev.ts # 构建配置（SWC + Manual Chunks；dev 代理 gmicloud/dxkp/glm）
-├── tailwind.config.js · components.json # 样式与 shadcn 配置
-├── biome.json · sgconfig.yml · tsconfig.* # 代码质量与类型检查配置
-├── .env.example                      # ⚙️ 环境变量模板（Supabase + 各 AI 网关 + 支付宝密钥说明）
-├── PRD.md · AGENTS.md                # 📑 产品需求文档 v2.0 · 协作规范
-├── 评分.md · 加分.md                  # 🏆 比赛评分分析与加分项交付清单
-├── LICENSE                           # ⚖️ MIT 开源协议
-└── package.json · pnpm-lock.yaml     # 📦 依赖与脚本（dev/build/lint）
-```
-
-> 📌 说明：`backend/`（运营中台）与根目录（商家端）为两个独立 pnpm 工程；`src/pages` 树中仅列代表性文件，完整 43 个页面以目录实际为准。
 
 ---
 
-## ⚡ 核心功能模块与工作流程
+## ⚡ 核心功能模块与工作流
 
-### 🧩 功能模块总览
-
-| 模块群 | 功能页面 | 核心能力 |
-|---|---|---|
-| 🏠 工作台与总览 | HomePage · DashboardPage · TaskQueuePage | 今日生成数 / 积分消耗 / ROI 概览 / 全局搜索 / 消息中心 |
-| 🎬 视频创作主链路 | VideoCreatePage · ScriptPage · VideoEditPage · WorksPage | 向导式生成 · CoT 四层脚本 SSE 流式 · Canvas 多轨道分镜剪辑 · 作品自动入库与首帧封面 |
-| 🛍️ 商品与选品 | ProductsPage · ProductSelectionPage · CompetitorPage | 抖音/淘宝/Amazon URL 与口令解析 · 16 国爆款选品矩阵 · 竞品风格 DNA 复刻 |
-| 🎭 数字人与音频 | AvatarsPage · EmotionAnalysisPage · MultiLangPage | 数字人选择与照片克隆 · CosyVoice2 情感配音 · 情绪时间轴对齐 · 50+ 语种翻译 |
-| 💳 积分与支付 | CreditsPage · OrderDetailPage · AlipayReturnPage | 余额前置拦截 creditGuard · 原子扣费 + `credit_logs` 审计 · 支付宝 AI 付 / 微信充值闭环 |
-| 📊 数据与增长 | AnalyticsPage · ABTestPage · DataFeedbackPage · TrendingPatternsPage | 多平台投放分析 · A/B 版本淘汰 · 低效文案 AI 重写回流 |
-| 👥 团队与开放 | TeamSpacePage · InvitePage · OpenAPIPage · KnowledgePage | 团队空间 RBAC · 资源共享 · `ak_` API 密钥与沙箱调试 · pgvector RAG 知识库 |
-| 🏢 厂商运营中台 | backend/（Vue） | 多租户管理 · AI 任务 Attempt 级追踪与故障退款 · 内容风控 · 积分调账 |
-
-### 🔄 视频生成主工作流
+### 🔄 全链路智能生成工作流
 
 ```
-商品 URL/口令 ──▶ ① AI 解析卖点 ──▶ ② CoT 四层脚本生成（钩子→痛点→产品→CTA，SSE 流式）
-                                        │  ↳ 可选：pgvector RAG 高分脚本 Few-shot 增强
-                                        ▼
-                 ③ 数字人 + CosyVoice2 情感配音（50+ 语种）
-                                        ▼
-        ◆ ④ creditGuard 余额校验（≥10 积分？）── 不足 ──▶ 充值弹窗（支付宝/微信）──▶ 到账重校验
-                                        │ 充足
-                                        ▼
-                 ⑤ 原子扣费 RPC（-10 积分 + credit_logs 流水）
-                                        ▼
-                 ⑥ Seedance 异步渲染提交 ──▶ ◆ 任务状态轮询
-                                        │            │ 失败 → Attempt 指数退避重试 → 耗尽自动退款冲正
-                                        ▼ 成功
-                 ⑦ 首帧封面截取 + Flux 多封面候选 → 作品自动入库
-                                        ▼
-                 ⑧ 多轨道剪辑 → 跨平台导出发布 → ⑨ ROI/A-B 数据回流 → 低效文案 AI 重写（回到 ②）
+商品 URL / 口令输入
+        │
+        ▼
+① 🕷️  URL 卖点智能提取
+   DeepSeek-V4-Flash 解析 HTML → 输出 3 条核心卖点 JSON
+        │
+        ▼
+② ✍️  CoT 四层营销脚本生成（SSE 打字机流式）
+   卖点层 → 痛点层 → 钩子层（前3秒留存）→ CTA 转化层
+        │
+        ▼
+③ 💰  积分真实扣除与审计记录
+   deductUserCredits 校验余额 → 扣除 10 积分 → 写入 credit_logs 消费明细
+        │
+        ▼
+④ 🎭  NLP 情感分析与数字人映射
+   台词情绪极值分析 → 时间轴情绪标注 → 数字人表情/语气映射
+        │
+        ▼
+⑤ 🎙️  多语种情感配音合成
+   CosyVoice2-0.5B → 情感化口播 MP3 / TeleSpeechASR 录音转写
+        │
+        ▼
+⑥ 🎬  Seedance 2.0 物理级视频渲染（异步队列）
+   首尾帧参考图 + 音频声轨 → 720P 多模态合成视频 (第一帧图持久化封面)
+        │
+        ▼
+⑦ ✂️  多轨道可视化编辑器（可选）
+   字幕轨 / 人像轨 / 声音轨 / 特效轨 → 拖拽拼接
+        │
+        ▼
+⑧ 🚀  跨平台一键发布 + 数据回流自调优
+   抖音 / TikTok / 快手 / 小红书 / B站 定时发布 → ROI 回流 → AI 重写优化
 ```
 
-> 🖼️ 可视化版本见 [doc/agent_workflow.svg](./doc/agent_workflow.svg)；外部 AI Agent 可经 MCP Server（`tools.json` 契约 + `ak_` 密钥）复用同一真实扣费/审计工具链。
+### 1. 🎬 官网 1080P 核心演示视频 (`/Shopro.mp4`)
+* **视频组件封装**：品牌官网首页 (`LandingPage.tsx`) 精准集成 `public/Shopro.mp4` 带货实操视频。
+* **极速加载**：配置 `preload="metadata"` 确保首帧与时长秒级展现，支持进度拖拽、全屏播放与 HD 标志。
+
+### 2. 💰 积分扣减与流水账单明细
+* **全局扣费封装 (`deductUserCredits`)**：在 `src/hooks/useCredits.ts` 中集中管控积分逻辑。当用户点击“AI视频生成”时，系统校验可用余额，若余额充足则从 `user_plans` 的 `credits_used` 中真实扣除 10 积分（批量生成时按数量计算）。
+* **收支审计明细 (`credit_logs`)**：扣除成功后自动插入 Supabase `credit_logs` 数据表，记录 `user_id`、`type: 'video_generate'`、`amount: -10`、`credits_after` 以及具体作品描述。
+* **全站实时广播**：触发 `credits_changed` 自定义事件，使得顶部导航栏（`MainLayout`）、个人中心（`ProfilePage`）以及充值中心（`CreditsPage`）无需刷页面即刻同步展现最新余额与收支明细。
+
+### 3. 🧠 AI 脚本与提示词增强工作台
+*   **低延时中文流式打字机**：工作台“提示词增强”强约束纯中文输出，支持低延时平滑逐字/逐块打字机流式渲染，瞬间提升提示词专业度。
+*   **视频生成模型矩阵**：集成了 7 大业界尖端视频生成模型，并配备厂商专属视觉标识：
+    - ⚡ **Seedance 2.0** (ByteDance)
+    - 💎 **happyhorse 1.0** (HappyHorse AI)
+    - 👾 **Krea** (Krea AI)
+    - ☁️ **wan2.7** (Alibaba Cloud 阿里通义)
+    - 🎬 **Kling** (Kuaishou AI 快手可灵)
+    - 📷 **Luma** (Luma Labs)
+    - 🥞 **pixverse** (PixVerse)
+*   **视频默认画质**：工作台默认配置 `720P · 16:9 · 5s` 标清爆款比例与高清帧率。
+*   **分镜 CoT 架构**：基于思维链（CoT）四层营销架构，流式（SSE）生成分镜脚本：钩子（Hook）➔ 痛点（Pain Point）➔ 产品介绍（Product）➔ 行动召唤（CTA）。
+
+### 4. 🛍️ 一键 URL / 口令解析商品导入 & 工作台商品联动 & 16国选品矩阵
+*   **工作台「商品」Tab & 智能选品弹窗**：
+    - 工作台视频生成输入区新增「商品」标签，支持在模态框中从 Supabase `products` 数据库实时调取商品。
+    - 选择商品后，AI 自动提取规范标题、原价/活动价、商品分类、核心卖点与详细描述，智能合成结构化爆款带货视频 Prompt 脚本并自动填充至输入框。
+*   **「商品管理」一键「创建视频」双向直连**：
+    - 在商品卡片与表格操作栏提供一键「创建视频」按钮，采用自定义 `RedirectWithState` 路由透传机制，保障跨页面 `location.state` 状态不丢失；
+    - 秒级直接跳转至主工作台 `/video/create` 视频生成界面并自动选中指定商品。
+*   **一键 URL / 剪贴板口令解析导入**：
+    - 支持抖音 🎵、TikTok 🎶、拼多多 🔴、淘宝 🟠、Shopee 🧡、亚马逊 📦、全网通用 🌐 等平台商品网页链接或分享口令（淘口令/抖音口令）。
+    - 实时调用 **DeepSeek-V4-Flash** 多模态能力，自动提取规范标题、所属分类、原价/折后活动售价、三大 AI 核心卖点、商品实物封面图及详细描述。
+    - 提供高亮亮彩纯白电商风格控制台，支持用户自定义编辑并一键存入 Supabase `products` 数据库。
+*   **第三方数据引擎接入中心 (Data Engine Integration Center)**：
+    - 智能选品支持数据引擎介入（FastData、EchoTik、GoodsFox、Kalodata、TikMeta、Shoplus）。
+    - 默认激活 **FastData** 数据引擎为【已连接】，其余引擎均支持弹窗配置 API Endpoint 与 API Key 自定义介入。
+*   **16 国爆款商品矩阵**：
+    - 涵盖美国、印尼、英国、越南、泰国、马来西亚、菲律宾、西班牙、墨西哥、德国、法国、意大利、巴西、日本、新加坡等 16 个国家/地区，每国包含 5+ 真实实物无人物商品图片数据。
+
+### 5. 🎬 作品素材与首帧封面动态提取 
+*   **视频首帧动态截取**：全站 AI 生成视频保存至作品素材库时，自动调用 `extractVideoFirstFrame` 截取对应视频第一帧图片作为真实高保真封面。
+*   **真实提示词绑定**：作品标题自动绑定并保存为用户输入的真实提示词内容（`prompt.trim()`），告别固定模板标题。
+
+### 6. 👥 数字人情感合成与多轨剪辑 
+*   **情绪对齐**：系统利用 NLP 分析台词的情感极值，在分镜时间轴上自动映射数字人的面部表情（平和、喜悦、担忧、激动、说服）与语气。
+*   **多模态配音**：利用 `CosyVoice2-0.5B` 根据情感标记生成自然拟真的小语种配音。
+*   **多轨道编辑器**：在网页端提供多轨道可视化 Canvas 剪辑面板，直观拖拽分镜卡片、配音音轨、字幕，实现免学习拼积木式合成。
+
+### 7. 💡 流量追踪、A/B测试与广告回流 
+*   **漏斗分析**：展示不同视频版本的转化漏斗图（播放量-完播率-点击率-成交金额），直接计算 ROI。
+*   **A/B测试**：同一商品配置多组脚本/封面，在线追踪测试，智能淘汰低效版本。
+*   **多平台发布**：可将渲染完成的视频直接调度至抖音、TikTok、小红书、快手或 B站，设定排期计划自动定时发布。
+*   **自适应优化**：将真实投放转化差的文案数据回流，自动反馈给 AI 训练，对低分脚本进行“一键调优”重写。
+
+### 8. 🔗 团队协作与 OpenAPI 开放平台 
+*   **团队协作**：支持主账号创建团队空间，通过邮箱发送邀请凭证，配置管理员或协作者角色，共享素材库与作品集。
+*   **OpenAPI 调试**：面向大商户或 ERP 系统，提供 `ak_...` 自定义 API 密钥生成、Revoke 控制，并附带在线交互式 API 沙箱调试器。
+
+### 9. 🏢 厂商运营后台管理系统 (Shopro-backend)
+https://shopro-backend.netlify.app/（测试模拟版）
+*   **运营总览看板 (Dashboard)**：聚合展示 AI 履约成功率、订单净支付金额、服务影响指数及 ECharts 履约趋势与算力占比图表。
+*   **客户与算力积分管理 (Customers & Credits)**：查看商家用户使用全景，动态配置能力与并发配额，支持带审计追踪的人工算力加/扣调账。
+*   **AI 任务中心与 Attempt 日志下探 (AI Operations)**：工作流实时追踪，下探查看任务多次 retry 尝试记录 (Attempt)、第三方接口耗时与错误码，提供任务强切、失败重试及“故障失败算力退款”。
+*   **智能内容风控治理 (Risk Governance)**：捕获涉黄、涉政、敏感违禁词事件，展示原始提示词与生成上下文证据链，支持处置（阻断/告警/忽略）与商家申诉二次复核。
+*   **订单、退款与套餐版本快照 (Billing & Packages)**：提供订单流水明细与异常订单“权益一键补发”，覆盖退款申请审批全生命周期，支持算力套餐版本快照创建。
+*   **系统运维与 MSW 零成本恢复 (System & Demo Reset)**：监控下游 AI 服务 health 状态，基于 RBAC 管理权限角色，支持在 Demo 模式下一键恢复 MSW 演示种子数据。
+*   **生产环境 Spring Boot 无缝对接**：前端 API 统一为 `/api/admin/**`，采用 `ApiResponse<T>` / `PageResult<T>` 统一契约。生产环境修改 `VITE_USE_MOCK=false` 即可秒级接轨真实后端。
 
 ---
 
@@ -280,62 +364,112 @@ docker compose -f docker-compose.mcp.yml up     # 或容器化 HTTP/SSE 模式�
 
 ---
 
-## 📦 API 接口总览
 
-### ⚡ Supabase Edge Functions（Deno，`{SUPABASE_URL}/functions/v1/{name}`）
+## 📦 API 接口
 
-| 分组 | 端点 | 方法 | 职责 |
-|---|---|---|---|
-| 🧠 AI 编排 | `ai-assistant` | POST | 视频生成主编排：脚本/提示词增强/任务提交/失败退款 |
-| | `phase3-assistant` | POST | 开放平台助手：API 密钥签发与沙箱调试 |
-| | `deepseek-v4-pro` · `glm-5-3-flash` · `wenxin-text-generation` · `minimax-chat` | POST | 文本大模型通道（主通道 + 降级链） |
-| | `seedance` | POST | Seedance 视频/封面异步生成与轮询 |
-| | `kling-video-create` · `kling-video-query` | POST/GET | Kling 视频任务提交与状态查询 |
-| | `sora-video-create` · `sora-video-query` | POST/GET | Sora 视频任务提交与状态查询 |
-| | `siliconflow-audio` · `stepaudio` | POST | TTS 情感配音 / ASR 转写 |
-| 💳 支付收单 | `alipay-payment-order` | POST | 支付宝 AI 付网站支付下单（返回 form 表单跳转） |
-| | `alipay-payment-notify` | POST | 异步回调验签 → 积分入账 |
-| | `alipay-trade-query` · `alipay-trade-ops` | POST | 交易查询 / 退款等操作（回调缺省时的兜底对账） |
-| | `create-payment-order` · `wechat-payment-webhook` | POST | 微信/通用支付订单与回调 |
-| 🔐 认证 | `send-sms-code` · `verify-sms-code` | POST | 手机验证码发送与校验 |
-| 🛠️ 运维 | `setup-demo` | POST | 演示数据初始化 |
+### 🏢 厂商运营后台 REST API (`/api/admin/**`)
 
-### 🐍 FastAPI 无服务器代理（Vercel `/api/*`）
+| 业务模块 | HTTP 方法 | Endpoint 路径 | 所需权限 | 功能描述 |
+|---|---|---|---|---|
+| **认证授权** | `POST` | `/api/admin/auth/login` | 无 | 管理员登录，返回 JWT Token 与用户信息 |
+| **运营总览** | `GET` | `/api/admin/dashboard/overview` | `dashboard:view` | 获取看板核心指标与环比数据 |
+| | `GET` | `/api/admin/dashboard/fulfillment-trend` | `dashboard:view` | 获取履约成功率与趋势折线图数据 |
+| **客户与算力**| `GET` | `/api/admin/customers/users` | `customers:view` | 分页查询商家用户列表及算力使用情况 |
+| | `POST` | `/api/admin/credits/adjust` | `customers:view` | 人工加/扣算力积分，记录调账日志 |
+| **AI 任务中心**| `GET` | `/api/admin/ai/workflows` | `workflow:view` | 分页查询 AI 脚本/语音/视频工作流任务 |
+| | `GET` | `/api/admin/ai/workflows/:id` | `workflow:view` | 获取指定工作流详情与 Attempt 尝试日志 |
+| | `POST` | `/api/admin/ai/workflows/:id/refund` | `workflow:view` | 对因故障失败的任务执行算力人工退款 |
+| **风险与风控**| `GET` | `/api/admin/risk/events` | `risk:view` | 分页查询敏感词与内容风险事件及证据链 |
+| | `POST` | `/api/admin/risk/events/:id/decide` | `risk:view` | 提交风险处置决定（阻断/告警/忽略） |
+| **订单与计费**| `GET` | `/api/admin/billing/orders` | `billing:view` | 分页查询充值与套餐购买订单 |
+| | `POST` | `/api/admin/billing/orders/:id/reissue`| `billing:view` | 对异常订单手动执行“权益一键补发” |
+| **系统与运维**| `POST` | `/api/admin/system/demo-data/reset` | `system:view` | （Demo模式）一键恢复 MSW 演示种子数据 |
 
-| 端点 | 方法 | 职责 |
-|---|---|---|
-| `/api/dxkp` | ALL | dxkp.ai 模型网关透传（密钥隔离，前端经 `/dxkp-api` 重写访问） |
-| `/api/mcp` | POST | MCP Streamable HTTP 网关（智能体 JSON-RPC 接入） |
+### 🌐`ai-assistant` — 统一 AI 网关
 
-### 🔌 MCP 开放工具（`mcp/tools.json` 契约，7 大工具）
+> **端点**：`POST /functions/v1/ai-assistant`  
+> **请求格式**：`{ "action": "<action>", "user_id": "<uid>", ...params }`
 
-| 工具 | 功能 |
-|---|---|
-| `extract_product_highlights` | 商品卖点结构化提取 |
-| `generate_marketing_script` | CoT 四层营销脚本生成 |
-| `translate_marketing_script` | 多语种本地化翻译 |
-| `synthesize_voice_tts` | 情感语音合成 |
-| `enhance_prompt` | AI 提示词增强 |
-| `submit_video_generation` | 视频生成任务提交 |
-| `query_video_status` | 任务状态轮询查询 |
+| Action | 功能描述 | 核心参数 | 响应数据 |
+|--------|---------|---------|---------|
+| `generate_selling_points` | 商品卖点生成 | `product_name`, `category`, `description` | `{ selling_points: string[] }` |
+| `extract_url_selling_points` | URL 网页卖点提取 | `url` | `{ selling_points: string[] }` |
+| `optimize_prompt` | 视频 Prompt 优化（英文输出） | `prompt`, `product_name`, `platform`, `style` | `{ optimized_prompt: string }` |
+| `generate_storyboard` | 分镜脚本生成 | `product_name`, `selling_points[]` | `{ shots: Shot[] }` |
+| `generate_script_four_layer` | CoT 四层流式脚本生成 | `product_name`, `category`, `selling_points`, `audience`, `platform`, `video_length` | `{ scenes: Scene[], prompt_text, script_id }` |
+| `analyze_traffic` | 流量完播率预测 | `duration`, `has_subtitle`, `pacing`, `bgm_tempo`, `product_category` | `{ completion_rate, click_rate, suggestions[] }` |
+| `analyze_style` | 竞品视频风格分析 | `source_url`, `source_type` | `{ rhythm, pacing, virality_score, … }` |
+| `analyze_style_deep` | 竞品风格深度文字解读 | `dna_fingerprint`, `rhythm`, `virality_score`, … | `{ analysis: string }` |
+| `generate_ab_variants` | A/B 变体脚本生成 | `product_name`, `variant_count` | `{ variants: Variant[] }` |
+| `extract_highlights` | 直播高光切片提取 | `video_url`, `user_id` | `{ highlights[] }` |
+| `knowledge_rag_search` | RAG 向量知识库检索 | `query`, `user_id`, `limit` | `{ results: KBItem[] }` |
+| `emotion_analysis` | 台词 NLP 情绪分析 | `sentences: string[]` | `[{ emotion, intensity, color, suggestion }]` |
+| `translate_script` | 多语种脚本翻译 | `script`, `source_lang`, `target_lang` | `{ translated: string }` |
+| `generate_cover` | AI 封面图生成任务提交 | `product_name`, `style`, `platform` | `{ task_id: string }` |
+| `query_cover_task` | 封面生成任务状态查询 | `task_id` | `{ status, image_url }` |
+| `content_moderation` | 内容安全审核 | `text` | `{ safe: boolean, flags[] }` |
+| `retry_video_job` | 失败视频任务重试 | `project_id`, `user_id` | `{ success: boolean }` |
+| `generate_video` | 视频生成任务提交（Seedance） | `project_id`, `prompt`, `materials[]` | `{ success, request_id }` |
 
-### ️ 前端客户端封装（`src/api/`）
+### 📺`seedance` — Seedance 2.0 视频生成
 
-| 模块 | 职责 |
-|---|---|
-| `client.ts` | ky HTTP 基座 + Supabase 请求约定 |
-| `products.ts` | 商品 CRUD 与 URL/口令解析 |
-| `video.ts` | 视频任务提交 / 轮询 / 多模型网关适配 |
-| `credits.ts` | 积分余额查询、原子扣费 RPC、流水读取 |
-| `alipay.ts` | 支付宝 AI 付下单与回跳处理 |
+> **端点**：`POST /functions/v1/seedance`
 
-> 📄 数据库层 RPC（`supabase/schema.sql`）：原子扣费 / 退款冲正函数 + `credit_logs` 审计表 + 新用户注册赠分触发器，全部受 RLS 行级安全保护。
+| Action | 功能 | 核心参数 | 响应 |
+|--------|------|---------|------|
+| `create` | 提交视频生成任务 | `prompt`, `first_frame`, `last_frame`, `duration`, `resolution`, `ratio`, `seed` | `{ task_id }` |
+| `query` | 查询任务状态 | `task_id` | `{ status, video_url, progress }` |
+
+### 🤖`phase3-assistant` — 综合后端
+
+> **端点**：`POST /functions/v1/phase3-assistant`（需 `Authorization: Bearer <JWT>`）
+
+| Action | 功能描述 |
+|--------|---------|
+| `add_competitor` | 添加竞品监控账号 |
+| `crawl_competitor` | 限制抓取竞品数据 |
+| `list_competitors` | 列出竞品账号列表 |
+| `generate_api_key` | 生成 OpenAPI 密钥（`ak_…`） |
+| `revoke_api_key` | 撤销 API 密钥 |
+| `list_api_keys` | 列出所有 API 密钥 |
+| `create_publish_task` | 创建跨平台定时发布任务 |
+| `list_publish_tasks` | 查询发布任务列表 |
+| `invite_team_member` | 邀请团队成员（邮箱） |
+| `list_team_members` | 列出团队成员及角色 |
+
+### 💳 微信支付 API
+
+| 端点 | 功能描述 |
+|------|---------|
+| `POST /functions/v1/create-payment-order` | 创建微信支付订单 + 返回二维码 URL |
+| `POST /functions/v1/wechat-payment-webhook` | 微信支付成功回调验签 + 积分充值入账 |
+| `POST /functions/v1/query-payment-status` | 轮询支付状态查询 |
+
+### 🎙️ 音频 API
+
+| 端点 | 功能 | 核心参数 |
+|------|------|---------|
+| `POST /functions/v1/siliconflow-audio` | CosyVoice2 TTS 情感合成 | `text`, `voice_id`, `emotion` |
+| `POST /functions/v1/stepaudio` | TeleSpeechASR 录音转写 | `audio_base64`, `language` |
+
+### 🔗 备选模型 API
+
+| 端点 | 功能描述 |
+|------|---------|
+| `POST /functions/v1/deepseek-v4-pro` | DeepSeek V4 直连代理（带 API Fallback） |
+| `POST /functions/v1/minimax-chat` | MiniMax-M3 对话代理 |
+| `POST /functions/v1/kling-video-create` | 可灵视频任务创建 |
+| `POST /functions/v1/kling-video-query` | 可灵视频任务状态查询 |
+| `POST /functions/v1/sora-video-create` | Sora 视频任务创建 |
+| `POST /functions/v1/sora-video-query` | Sora 视频任务状态查询 |
+| `POST /functions/v1/wenxin-text-generation` | 百度文心一言文本代理 |
+| `POST /functions/v1/send-sms-code` | 发送手机短信验证码 |
+| `POST /functions/v1/verify-sms-code` | 验证短信验证码登录 |
 
 ---
-
 ## 🏗️ 系统架构与测试汇总
 
-> 完整版见 [系统架构与测试汇总.md](./doc/系统架构与测试汇总.md)
+> 完整版见 [系统架构与测试汇总.md](./系统架构与测试汇总.md)
 
 ### 系统架构图
 
@@ -429,57 +563,6 @@ docker compose -f docker-compose.mcp.yml up     # 或容器化 HTTP/SSE 模式�
 
 ---
 
-## 🏆 项目评分分析
-
-> **评分依据**：比赛评分细则（评分维度与权重 / 加分项与减分项 / 建议提交交付物）｜完整版见 [评分.md](./doc/评分.md)
-
-### 评分维度对照（满分 100 分）
-
-| 评分维度 | 分值 | 项目现状与证据 | 自评得分 |
-|---|---|---|---|
-| **产品完成度** | 25 分 | 核心链路全闭环（商品解析→脚本→配音→合成→剪辑→发布→充值），共 43 个页面；双端架构（React 商家端 + Vue 运营后台）；异常兜底（creditGuard 前置拦截、失败回滚退款、Kling/Sora/MiniMax 模型降级矩阵）；移动端全量适配 | **21 ~ 23** |
-| **技术实现** | 20 分 | CoT 四层营销脚本 + 情感标注 + SSE 打字机流式；23 个 Edge Functions + 26 个迁移 + `lib/` 按模型域拆分；原子扣费 RPC + `credit_logs` 审计 + 回调验签 + RLS；视频播放器 rAF+原生时钟、Blob 预载、60FPS 游标、Manual Chunks 分包 | **16 ~ 18** |
-| **商业价值** | 25 分 | 痛点真实（内容成本高/剪辑门槛/多语言难）；四类目标画像；积分制计费（10 积分=1 元、单条 <1 元、降本 90%+）四档套餐 + 企业订阅双轨；支付宝 AI 付已实际接入可收款；竞品对照清晰 | **20 ~ 22** |
-| **创新性和技术深度** | 15 分 | 电商垂直「生成而非剪辑」定位 + 16 国爆款选品；MCP 开放协议封装 7 大工具；CoT 脚本 + pgvector RAG Few-shot + 数据回流自学习闭环；多轨道 Canvas 分镜编辑、爆款 DNA 复刻 | **11 ~ 13** |
-| **网络投票** | 15 分 | 与代码质量无关的不可控项，建议发动商家社群 / 跨境卖家圈子拉票 | **0 ~ 15**（中位预估 **8**） |
-
-**基础分小计（前四项，满分 85）**：**68 ~ 76 分**
-
-### 加分项与减分项对照
-
-| 类型 | 项目 | 分值 | 项目现状 | 预判 |
-|---|---|---|---|---|
-| 加分 | 产品可实际部署 | +3 | 已上线 **https://f.playe.top**（Vercel + Supabase + AI 网关代理生效） | **可得**（+3） |
-| 加分 | 代码开源且 License 合规 | +2 | 根目录 `LICENSE`（MIT）+ `package.json` 声明 `"license": "MIT"` | **可得**（+2） |
-| 加分 | 测试覆盖 | +2 | `doc/TEST_CASES.md` 23 个用例（输入/预期/实际），`pnpm build` ✓ 36.37s 实测 | **可得**（+2） |
-| 减分 | 超时 | -2 | 取决于现场路演控场 | 建议排练 8 分钟精简版 |
-| 减分 | 代码无提交历史 | -3 | Gitee 远程有持续规范中文提交历史 | **不扣分** |
-| 减分 | API 调用造假 | 取消资格 | 全部真实调用，`scratch/` 探针可复验 | **不扣分** |
-
-**加分预判**：**+7（部署 +3 / License +2 / 测试覆盖 +2 均已交付，预期满额）**
-
-### 建议提交交付物核对（5 / 5 ✅）
-
-| 交付物 | 格式 | 状态 |
-|---|---|---|
-| 系统架构图 | SVG | ✅ `doc/system_architecture.svg`（五层架构 + 核心数据流） |
-| Agent 工作流图 | SVG | ✅ `doc/agent_workflow.svg`（主链路 + 积分扣退兜底 + MCP 工具链） |
-| 测试用例与结果 | Markdown | ✅ `doc/TEST_CASES.md`（23 个用例含构建实测记录） |
-| 在线 Demo 链接 | URL | ✅ **https://f.playe.top**（实测可访问） |
-| 开源 License | 文件 | ✅ 根目录 `LICENSE`（MIT）+ `package.json` |
-
-### 总分预测
-
-| 场景 | 基础分（85） | 网络投票（15） | 加分 | 减分 | 总分预测 |
-|---|---|---|---|---|---|
-| 保守 | 68 | 4 | +7 | 0 | **≈ 79** |
-| 中性 | 72 | 8 | +7 | 0 | **≈ 87** |
-| 理想 | 76 | 12 | +7 | 0 | **≈ 95** |
-
-> 📌 **结论**：Shopro AI 在**产品完成度**与**商业价值**两大分项具备扎实竞争力，证明材料短板已全部补齐（五项交付物均交付，加分预期满额 +7），剩余不确定性仅在于现场路演控场（避免超时 -2）与网络投票区间（0~15 弹性）。
-
----
-
 ## 💡 总结与展望
 
 ###  项目总结
@@ -503,12 +586,9 @@ Shopro AI 是一个**已完成商业闭环验证的全栈 AIGC 实战项目**：
 | 🧩 生态开放 | MCP 工具市场化合规审核与配额计费，孵化第三方创作者插件生态 |
 | 🌍 出海纵深 | 扩充小语种情感配音评测集，建设分国别爆款脚本知识库 |
 
+
 ---
 
-<div align="center">
-
-**⭐ 如果这个项目对你有帮助，欢迎 Star 支持！**
-
-MIT License · Copyright (c) 2026 Shopro AI ([xiaoye66](https://gitee.com/xiaoye66/shoproai))
-
-</div>
+<p align="center">
+  <sub>Built with ❤️ by Shopro AI 研发团队 - AIGC带货视频</sub>
+</p>

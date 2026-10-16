@@ -1,6 +1,6 @@
 <div align="center">
 
-## AI软件赛道 - 跨境电商AIGC带货视频创作平台 - 晓梦AGI
+## Shopro- 跨境电商AIGC带货视频创作平台
 
 [![Frontend](https://img.shields.io/badge/Frontend-React_18_%C2%B7_Vue_3_%C2%B7_TS_5.7_%C2%B7_Vite_5.4-61dafb?logo=react&logoColor=black)](https://react.dev)
 [![UI](https://img.shields.io/badge/UI-Tailwind_%C2%B7_shadcn/Radix_%C2%B7_Element_Plus-38bdf8?logo=tailwindcss&logoColor=black)](https://tailwindcss.com)

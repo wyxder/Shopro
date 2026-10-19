@@ -291,7 +291,7 @@ export default function CreditsPage() {
   }, [payStatus, payOrderNo, loadPlan, loadLogs]);
 
   const [payModalOpen, setPayModalOpen] = useState(false);
-  const [selectedPayPkg, setSelectedPayPkg] = useState({ name: '专业版', price: '299', credits: '1000' });
+  const [selectedPayPkg, setSelectedPayPkg] = useState({ name: '专业版', price: '299', credits: '1000', planId: '' });
   const [alipaySubmitting, setAlipaySubmitting] = useState(false);
 
   // 支付宝 AI 付下单：服务端签名生成表单后整页跳转；失败时回退手动扫码支付弹窗
@@ -305,16 +305,17 @@ export default function CreditsPage() {
       name: plan.name,
       price: String(plan.price),
       credits: String(plan.credits || '500'),
+      planId: plan.id,
     });
     setAlipaySubmitting(true);
     const toastId = toast.loading(`正在创建支付宝订单（${plan.name}）…`);
     try {
       const order = await createAlipayOrder(plan.id);
-      toast.success(`订单 ${order.order_no} 已创建，正在跳转支付宝支付 ¥${order.amount}…`, { id: toastId });
+      toast.success(`订单 ${order.order_no} 已创建，正在安全跳转支付宝支付 ¥${order.amount}…`, { id: toastId });
       // 表单提交为整页跳转，支付完成后由 returnUrl 回跳 /alipay-return 查询最终结果
       renderAndSubmitAlipayForm(order.payment_html);
     } catch (e) {
-      toast.error(`支付宝下单失败：${e instanceof Error ? e.message : '未知错误'}，已切换为手动扫码支付`, { id: toastId });
+      toast.error(`支付宝下单失败：${e instanceof Error ? e.message : '未知错误'}，已切换为扫码支付`, { id: toastId });
       setPayModalOpen(true);
     } finally {
       setAlipaySubmitting(false);
@@ -410,7 +411,7 @@ export default function CreditsPage() {
                         </p>
                       </div>
                     </div>
-                    <Button size="sm" onClick={() => document.getElementById('tab-plans')?.click()} className="h-8 text-xs font-medium rounded-full bg-gradient-to-r from-[#FFB706] to-[#FF5E03] hover:brightness-110 border-none shrink-0 self-start sm:self-center">
+                    <Button size="sm" onClick={() => handleTabChange('plans')} className="h-8 text-xs font-medium rounded-full bg-gradient-to-r from-[#FFB706] to-[#FF5E03] hover:brightness-110 border-none shrink-0 self-start sm:self-center">
                       <ArrowUpCircle className="w-3.5 h-3.5 mr-1" />升级套餐
                     </Button>
                   </div>
@@ -697,6 +698,7 @@ export default function CreditsPage() {
         pkgName={selectedPayPkg.name}
         price={selectedPayPkg.price}
         credits={selectedPayPkg.credits}
+        planId={selectedPayPkg.planId}
       />
     </div>
   );

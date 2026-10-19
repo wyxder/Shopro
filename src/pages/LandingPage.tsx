@@ -8,6 +8,9 @@ import {
   CheckCircle2, XCircle, Award, Layers,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import { supabase } from '@/db/supabase';
+import { createAlipayOrder, renderAndSubmitAlipayForm } from '@/api/alipay';
 import PaymentDialog from '@/components/common/PaymentDialog';
 import LandingHero from '@/components/LandingHero';
 
@@ -849,7 +852,8 @@ export default function LandingPage() {
   const [navOpen, setNavOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [payDialogOpen, setPayDialogOpen] = useState(false);
-  const [payPkg, setPayPkg] = useState({ name: '专业版', price: '299', credits: '1,000' });
+  const [payPkg, setPayPkg] = useState({ name: '专业版', price: '299', credits: '1,000', planId: '' });
+  const [alipayLoading, setAlipayLoading] = useState(false);
 
   // 导航栏滚动透明→不透明
   useEffect(() => {
@@ -859,6 +863,54 @@ export default function LandingPage() {
   }, []);
 
   const goToApp = () => navigate('/login');
+
+  // 会员计划调用支付宝支付
+  const handleSelectPlan = async (plan: typeof plans[0]) => {
+    if (plan.price === '¥0') {
+      goToApp();
+      return;
+    }
+
+    // 检查登录状态
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      toast.info(`请先登录账号后再订购「${plan.name}」，正为您前往登录…`);
+      navigate(`/login?redirect=${encodeURIComponent('/credits?tab=plans')}`);
+      return;
+    }
+
+    if (alipayLoading) return;
+    setAlipayLoading(true);
+    const toastId = toast.loading(`正在为「${plan.name}」创建支付宝订单…`);
+
+    try {
+      // 匹配数据库中的套餐 ID
+      const { data: dbPlan } = await supabase
+        .from('plans')
+        .select('id, name')
+        .ilike('name', `%${plan.name}%`)
+        .maybeSingle();
+
+      const planId = dbPlan?.id || (plan.name.includes('专业')
+        ? '5aa94301-26c7-4581-9b63-d1df52329621'
+        : 'd05ceb6e-df8a-4e2b-a01c-d784ab719f93');
+
+      const order = await createAlipayOrder(planId);
+      toast.success(`订单 ${order.order_no} 已创建，正在安全跳转支付宝支付 ¥${order.amount}…`, { id: toastId });
+      renderAndSubmitAlipayForm(order.payment_html);
+    } catch (e: any) {
+      toast.error(`支付宝下单未完成：${e?.message || '请重试'}，为您切换至扫码支付`, { id: toastId });
+      setPayPkg({
+        name: plan.name,
+        price: plan.price.replace('¥', ''),
+        credits: plan.name.includes('专业') ? '1,000' : '5,000',
+        planId: plan.name.includes('专业') ? '5aa94301-26c7-4581-9b63-d1df52329621' : 'd05ceb6e-df8a-4e2b-a01c-d784ab719f93',
+      });
+      setPayDialogOpen(true);
+    } finally {
+      setAlipayLoading(false);
+    }
+  };
 
   const { ref: radarRef, inView: radarInView } = useInView(0.2);
 
@@ -1338,20 +1390,10 @@ export default function LandingPage() {
 
                       {/* CTA 按钮 */}
                       <button
-                        onClick={() => {
-                          if (plan.price === '¥0') {
-                            goToApp();
-                          } else {
-                            setPayPkg({
-                              name: plan.name,
-                              price: plan.price.replace('¥', ''),
-                              credits: plan.name.includes('专业') ? '1,000' : '5,000',
-                            });
-                            setPayDialogOpen(true);
-                          }
-                        }}
+                        onClick={() => handleSelectPlan(plan)}
+                        disabled={alipayLoading}
                         className={cn(
-                          'w-full py-3 rounded-xl text-sm font-bold transition-all duration-200 hover:scale-[1.02] hover:shadow-lg',
+                          'w-full py-3 rounded-xl text-sm font-bold transition-all duration-200 hover:scale-[1.02] hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed',
                           plan.highlight ? 'text-white animate-border-glow' : 'text-white/80 hover:text-white'
                         )}
                         style={plan.highlight
@@ -1359,7 +1401,7 @@ export default function LandingPage() {
                           : { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }
                         }
                       >
-                        {plan.cta}
+                        {alipayLoading ? '正在拉起支付…' : plan.cta}
                       </button>
                     </div>
                   </TiltCard>
@@ -1506,6 +1548,7 @@ export default function LandingPage() {
         pkgName={payPkg.name}
         price={payPkg.price}
         credits={payPkg.credits}
+        planId={payPkg.planId}
       />
     </div>
   );

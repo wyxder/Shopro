@@ -2,8 +2,11 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { QrCode, CheckCircle2, Copy, MessageSquareCode } from 'lucide-react';
+import { QrCode, CheckCircle2, Copy, MessageSquareCode, Zap } from 'lucide-react';
 import { toast } from 'sonner';
+
+import { createAlipayOrder, renderAndSubmitAlipayForm } from '@/api/alipay';
+import { supabase } from '@/db/supabase';
 
 export interface PaymentDialogProps {
   open: boolean;
@@ -11,6 +14,7 @@ export interface PaymentDialogProps {
   pkgName?: string;
   price?: number | string;
   credits?: number | string;
+  planId?: string;
 }
 
 export default function PaymentDialog({
@@ -19,9 +23,11 @@ export default function PaymentDialog({
   pkgName = '爆款进阶包',
   price = '50',
   credits = '500',
+  planId,
 }: PaymentDialogProps) {
   const [copied, setCopied] = useState(false);
   const [payStatus, setPayStatus] = useState<'scan' | 'completed'>('scan');
+  const [alipayLoading, setAlipayLoading] = useState(false);
 
   const handleCopyWx = () => {
     navigator.clipboard.writeText('wyx200265');
@@ -33,6 +39,42 @@ export default function PaymentDialog({
   const handleConfirmPay = () => {
     setPayStatus('completed');
     toast.success('支付提交成功！请联系客服微信 wyx200265 发送截图，立享极速到账服务！');
+  };
+
+  const handleAlipayDirect = async () => {
+    if (alipayLoading) return;
+    setAlipayLoading(true);
+    const toastId = toast.loading(`正在拉起支付宝官方收银台…`);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        toast.info('请先登录账号后再使用支付宝支付', { id: toastId });
+        window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+        return;
+      }
+
+      let targetPlanId = planId;
+      if (!targetPlanId) {
+        const { data: matched } = await supabase
+          .from('plans')
+          .select('id')
+          .ilike('name', `%${pkgName}%`)
+          .maybeSingle();
+        targetPlanId = matched?.id;
+      }
+
+      if (!targetPlanId) {
+        throw new Error('未找到对应套餐编号，请在套餐列表重新选择');
+      }
+
+      const order = await createAlipayOrder(targetPlanId);
+      toast.success(`订单创建成功，正在跳转支付宝…`, { id: toastId });
+      renderAndSubmitAlipayForm(order.payment_html);
+    } catch (e: any) {
+      toast.error(`支付宝拉起失败：${e?.message || '未知错误'}，可继续使用下方二维码扫码`, { id: toastId });
+    } finally {
+      setAlipayLoading(false);
+    }
   };
 
   return (
@@ -104,13 +146,22 @@ export default function PaymentDialog({
           </div>
 
           {/* 操作按钮 */}
-          <div className="w-full pt-0.5 flex gap-2">
+          <div className="w-full pt-1 flex flex-col sm:flex-row gap-2">
             <Button
-              className="flex-1 h-9 sm:h-10 bg-gradient-to-r from-pink-500 to-rose-500 hover:brightness-110 text-white font-semibold text-xs rounded-xl shadow-md shadow-pink-500/20 gap-1.5"
+              className="flex-1 h-9 sm:h-10 bg-gradient-to-r from-sky-500 to-blue-600 hover:brightness-110 text-white font-semibold text-xs rounded-xl shadow-md shadow-sky-500/20 gap-1.5"
+              onClick={handleAlipayDirect}
+              disabled={alipayLoading}
+            >
+              <Zap className="w-3.5 h-3.5" />
+              {alipayLoading ? '正在拉起收银台…' : '支付宝官方极速支付'}
+            </Button>
+            <Button
+              variant="outline"
+              className="h-9 sm:h-10 border-white/15 bg-white/5 hover:bg-white/10 text-white font-semibold text-xs rounded-xl gap-1.5"
               onClick={handleConfirmPay}
             >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              {payStatus === 'completed' ? '已通知客服确认中' : '我已完成支付'}
+              <CheckCircle2 className="w-3.5 h-3.5 text-pink-400" />
+              {payStatus === 'completed' ? '已通知客服确认中' : '我已完成扫码'}
             </Button>
           </div>
         </div>

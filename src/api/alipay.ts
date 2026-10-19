@@ -45,18 +45,104 @@ export async function createAlipayOrder(planId: string): Promise<AlipayOrderResu
 }
 
 /**
- * 渲染 pageExec 生成的表单并自动提交（页面跳转类 API 唯一正确调起方式）。
- * 必须在用户点击手势的同步调用链中执行，避免浏览器拦截跳转。
+ * 拦截浏览器第三方插件（如 content-script）抛出的未捕获异常，防止其污染控制台或阻塞应用逻辑。
+ * 典型报错：chrome-extension://... TypeError: Cannot read properties of undefined (reading 'indexOf')
+ */
+export function initExtensionErrorGuard(): void {
+  if (typeof window === 'undefined') return;
+
+  const isExtensionError = (err: any): boolean => {
+    const stack = String(err?.stack || '');
+    const msg = String(err?.message || err || '');
+    return (
+      stack.includes('chrome-extension://') ||
+      msg.includes('chrome-extension://') ||
+      msg.includes('checkExceptionProcess') ||
+      stack.includes('checkExceptionProcess')
+    );
+  };
+
+  window.addEventListener('error', (event) => {
+    if (isExtensionError(event.error) || (event.filename && event.filename.startsWith('chrome-extension://'))) {
+      event.preventDefault();
+      event.stopPropagation();
+      console.warn('[AlipayGuard] 已拦截第三方扩展内部异常，保护主流程正常运行:', event.message);
+    }
+  }, true);
+
+  window.addEventListener('unhandledrejection', (event) => {
+    if (isExtensionError(event.reason)) {
+      event.preventDefault();
+      event.stopPropagation();
+      console.warn('[AlipayGuard] 已拦截第三方扩展未处理 Promise 拒绝:', event.reason);
+    }
+  }, true);
+}
+
+/**
+ * 渲染支付宝 pageExec 生成的表单并自动提交，或直接处理网关重定向 URL。
+ * 兼容两种支付调起响应：
+ * 1) 直接网关 URL（https://openapi.alipay.com/gateway.do?...） -> 立即 window.location.href 跳转；
+ * 2) 包含 <form action="..." method="post"> 的 HTML 字符串 -> 挂载至当前文档 DOM 并通过原型方法提交。
  */
 export function renderAndSubmitAlipayForm(paymentHtml: string): void {
-  const doc = new DOMParser().parseFromString(paymentHtml, 'text/html');
-  const form = doc.querySelector('form');
-  if (!form) throw new Error('支付表单解析失败，请重试');
+  if (!paymentHtml || typeof paymentHtml !== 'string') {
+    throw new Error('未接收到支付宝支付凭据，请重试');
+  }
+
+  const trimmed = paymentHtml.trim();
+
+  // 1. 若响应直接为 URL（如 GET 模式返回的网关地址），直接执行跳转
+  if (/^https?:\/\//i.test(trimmed)) {
+    window.location.href = trimmed;
+    return;
+  }
+
+  // 2. 将 HTML 插入宿主文档 DOM 容器，避免 DOMParser 跨文档引起的节点上下文问题
   const container = document.createElement('div');
-  container.style.display = 'none';
-  container.appendChild(form);
+  container.id = `alipay-submit-container-${Date.now()}`;
+  container.style.position = 'fixed';
+  container.style.left = '-9999px';
+  container.style.top = '-9999px';
+  container.style.width = '1px';
+  container.style.height = '1px';
+  container.style.opacity = '0';
+  container.style.pointerEvents = 'none';
+  container.innerHTML = trimmed;
   document.body.appendChild(container);
-  form.submit();
+
+  // 3. 查找并提交表单
+  const form = container.querySelector('form');
+  if (form) {
+    try {
+      // 强制使用 HTMLFormElement.prototype.submit，避免内部 input 具有 name="submit" 覆盖方法
+      HTMLFormElement.prototype.submit.call(form);
+      return;
+    } catch (e) {
+      console.warn('[Alipay] 原型 submit 调用异常，尝试原生 submit:', e);
+      try {
+        form.submit();
+        return;
+      } catch (err2) {
+        console.warn('[Alipay] 原生 submit 也失败，将尝试提取 action 跳转:', err2);
+      }
+    }
+  }
+
+  // 4. 容错兜底：从表单或 HTML 中通过正则提取 action 或目标网关 URL
+  const actionMatch = trimmed.match(/action=["'](https?:\/\/[^"']+)["']/i);
+  if (actionMatch && actionMatch[1]) {
+    window.location.href = actionMatch[1];
+    return;
+  }
+
+  const urlMatch = trimmed.match(/https?:\/\/[^\s"'<>]+/i);
+  if (urlMatch && urlMatch[0]) {
+    window.location.href = urlMatch[0];
+    return;
+  }
+
+  throw new Error('支付表单解析失败，请重试');
 }
 
 /** 交易查询兜底：GET 参数必须拼接在 URL 上（.rules/supabase-edge-function-get-body） */

@@ -18,7 +18,7 @@
 
 🌐 **商家创作端**：<https://f.playe.top> ｜ 🏢 **厂商运营中台**：<https://shopro-backend.netlify.app> ｜ 📄 **产品 PRD**：[doc/PRD.md](./doc/PRD.md)
 
-🗺️ **系统架构与测试**：[doc/系统架构与测试汇总.md](./doc/系统架构与测试汇总.md) ｜ 🧪 **测试用例**：[doc/TEST_CASES.md](./doc/TEST_CASES.md) ｜ 💳 **支付宝接入**：[doc/支付.md](./doc/支付.md)
+｜ 🧪 **测试用例**：[doc/TEST_CASES.md](./doc/TEST_CASES.md) ｜ 💳 **支付宝接入**：[doc/支付.md](./doc/支付.md)
 
 </div>
 

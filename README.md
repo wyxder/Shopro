@@ -14,14 +14,6 @@
   <img alt="Video" src="https://img.shields.io/badge/Video-Seedance_2.0-violet" />
 </p>
 
-<div align="center">
-
-🌐 **商家创作端**：<https://f.playe.top> ｜ 📄 **产品 PRD**：[doc/PRD.md](./doc/PRD.md)
-
-｜ 🧪 **测试用例**：[doc/TEST_CASES.md](./doc/TEST_CASES.md) ｜ 💳 **支付宝接入**：[doc/支付.md](./doc/支付.md)
-
-</div>
-
 ---
 
 ## 💎 项目简介

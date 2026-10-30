@@ -314,8 +314,8 @@ export default function CreditsPage() {
       toast.success(`订单 ${order.order_no} 已创建，正在安全跳转支付宝支付 ¥${order.amount}…`, { id: toastId });
       // 表单提交为整页跳转，支付完成后由 returnUrl 回跳 /alipay-return 查询最终结果
       renderAndSubmitAlipayForm(order.payment_html);
-    } catch (e) {
-      toast.error(`支付宝下单失败：${e instanceof Error ? e.message : '未知错误'}，已切换为扫码支付`, { id: toastId });
+    } catch {
+      toast.dismiss(toastId);
       setPayModalOpen(true);
     } finally {
       setAlipaySubmitting(false);

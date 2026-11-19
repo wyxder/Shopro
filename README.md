@@ -59,7 +59,8 @@
 |---|---|---|---|
 | 云服务 BaaS | Supabase | Auth、DB、Storage、Edge Functions (22个微函数) | 商家端全栈后端云服务托管 |
 | 厂商后端标准 | Spring Boot | 3.x REST Server | 厂商后台 REST API (`/api/admin/**`) 生产接入标准 |
-| 数据库 | PostgreSQL | 由 Supabase 托管，28 个增量迁移脚本 | RLS 物理数据隔离，pgvector 向量模糊搜索 |
+| 数据库 | PostgreSQL | 由 Supabase 托管，29 个增量迁移脚本 | RLS 物理数据隔离，pgvector 向量模糊搜索 |
+| 兑换码核销 | coupons + SECURITY DEFINER RPC | `00028` 建表与核销函数、`00029` 补充 50 面积券 | 事务内完成校验、计数与入账，客户端零写权限 |
 | 账户认证 | Supabase Auth / JWT | 邮箱/手机验证码登录与 JWT 会话 | 商家端与厂商后台 RBAC 权限校验与 Token 刷新 |
 | 边缘计算 | Supabase Edge Functions | Deno 运行时 (22 个微服务) | AI 编排、双轨支付闭环、竞品抓取、团队协作接口 |
 | 实时流式 | SSE + eventsource-parser | 前端 `src/lib/sse.ts` 封装 | 实现打字机流式（SSE）文本响应解析 |
@@ -84,44 +85,54 @@
 
 ---
 
-## 📁 目录结构与 42 个核心页面
+## 📁 目录结构与 43 个核心页面
 
 ```text
 Shopro AI/
-├── Shopro-backend/                 # 🏢 厂商运营后台管理系统 (Vue 3 + Element Plus + MSW / Spring Boot)
-│   └── Shopro-backend-main/        # 厂商后台源码、API 模块与 MSW 模拟引擎
-│       ├── src/api/                # 厂商后台 REST API (auth, billing, credits, risk, system...)
-│       ├── src/views/              # 8 大业务域运营管理页面 (Dashboard, Users, AI-Ops, Risk...)
-│       ├── src/mocks/              # MSW 浏览器端 Mock 数据库与状态重置引擎
-│       ├── README.md               # 厂商运营后台详细技术与架构设计文档
-│       └── README1.md              # 厂商运营后台全量评估标准文档
+├── backend/                        # 🏢 厂商运营后台管理系统 (Vue 3 + Element Plus + Pinia + MSW)
+│   ├── src/api/                    # 后台 REST 客户端 (auth, billing, credits, customers, risk, tickets, workflows, system)
+│   ├── src/views/                  # 15 个运营页面 (Dashboard, User/Order/Workflow/Risk/Ticket 列表与详情, CreditLedger, System, Forbidden)
+│   ├── src/mocks/                  # MSW 浏览器端 Mock：domain 领域模型 + handlers 路由 + seed 近 7 天动态种子数据
+│   ├── src/stores/                 # Pinia 全局会话、权限与演示状态
+│   ├── src/constants/              # 权限点、状态机与错误码常量
+│   ├── src/composables/            # 组合式函数复用层
+│   ├── README.md                   # 厂商运营后台详细技术与架构设计文档
+│   ├── admin-architecture-spec.md  # 后台架构与接口契约说明
+│   └── 项目结构与功能模块说明.md     # 后台模块职责与页面清单
 ├── public/
-│   └── Shopro.mp4                 # 官网最新 1080P 高清全流程带货实操演示视频
+│   ├── Shopro.mp4                  # 官网最新 1080P 高清全流程带货实操演示视频
+│   └── pay.png / shopro.png        # 收银台与品牌物料
 ├── src/
-│   ├── App.tsx                    # 应用根组件，挂载 React-Query、AuthProvider、Toaster
-│   ├── routes.tsx                 # 页面路由配置 (受保护路由与公开路由)
-│   ├── main.tsx                   # React 项目打包入口
-│   ├── index.css                  # 全局样式，包含 Tailwind 与玻璃态主题变量
-│   ├── components/                # 业务公共组件
+│   ├── App.tsx                     # 应用根组件，挂载 React-Query、AuthProvider、Toaster
+│   ├── routes.tsx                  # 页面路由配置 (受保护路由与公开路由)
+│   ├── main.tsx                    # React 项目打包入口
+│   ├── index.css                   # 全局样式，包含 Tailwind 与玻璃态主题变量
+│   ├── api/                        # 商家端数据层
+│   │   ├── credits.ts              # 积分余额、流水查询与 redeemCoupon 兑换码核销
+│   │   ├── alipay.ts               # 支付宝 AI 付下单/查询/扫码兜底
+│   │   ├── products.ts             # 商品解析、导入与选品数据
+│   │   └── video.ts                # 视频任务提交与轮询
+│   ├── components/                 # 业务公共组件
 │   │   ├── layouts/
-│   │   │   └── MainLayout.tsx     # 核心主布局，实现全局搜索、积分余额显示、侧边栏及主题切换
-│   │   ├── ui/                    # shadcn 风格原子级组件 (Button, Dialog, Badge, Input...)
-│   │   ├── CoverCandidates.tsx    # AI 封面多候选展示与下载
+│   │   │   └── MainLayout.tsx      # 核心主布局：积分余额、充值/兑换弹窗、侧边栏与主题切换
+│   │   ├── ui/                     # shadcn 风格原子级组件 (Button, Dialog, Badge, Input...)
+│   │   ├── CoverCandidates.tsx     # AI 封面多候选展示与下载
 │   │   └── ...
 │   ├── contexts/
-│   │   └── AuthContext.tsx        # Supabase Session 状态管理
+│   │   └── AuthContext.tsx         # Supabase Session 状态管理
 │   ├── db/
-│   │   └── supabase.ts            # Client 单例初始化
+│   │   └── supabase.ts             # Client 单例初始化
 │   ├── hooks/
-│   │   ├── use-mobile.tsx         # 移动端断点检测
-│   │   ├── use-toast.ts           # Toast 通知
-│   │   ├── useCredits.ts          # 积分余额实时查询、deductUserCredits 真实扣除与广播
-│   │   └── useDraft.ts            # 页面内容本地缓存恢复
+│   │   ├── use-mobile.tsx          # 移动端断点检测
+│   │   ├── use-toast.ts            # Toast 通知
+│   │   ├── useCredits.ts           # 积分余额实时查询、deductUserCredits 真实扣除与广播
+│   │   └── useDraft.ts             # 页面内容本地缓存恢复
 │   ├── lib/
-│   │   ├── audioRecorder.ts       # 麦克风录音控制 (配合 StepAudio ASR)
-│   │   ├── sse.ts                 # SSE 流式解析及 StepAudio / Seedance API 轮询
-│   │   └── utils.ts               # CSS 样式合并等辅助函数
-│   ├── pages/                     # 业务页面 (42个核心页面及子页面)
+│   │   ├── audioRecorder.ts        # 麦克风录音控制 (配合 TeleSpeechASR)
+│   │   ├── sse.ts                  # SSE 流式解析及 StepAudio / Seedance API 轮询
+│   │   └── utils.ts                # CSS 样式合并等辅助函数
+│   ├── services/                   # 跨页面业务编排服务
+│   ├── pages/                      # 业务页面 (43 个核心页面及子页面)
 │   │   ├── LandingPage.tsx        # 品牌官网首页，播放 public/Shopro.mp4 1080P 实操演示
 │   │   ├── LoginPage.tsx          # 登录注册页面 (支持验证码与密码双重认证)
 │   │   ├── DashboardPage.tsx      # 工作台主页，展示快捷入口、生成历史和关键指标
@@ -175,17 +186,37 @@ Shopro AI/
 │   ├── mcp_shopro_server.py       #    HTTP/SSE 传输服务
 │   ├── mcp_shopro_server_stdio.py #    本地 stdio 传输服务
 │   └── docker-compose.mcp.yml     #    容器化部署编排
-├── doc/                           # 📚 项目核心交付物与规范文档
-│   ├── system_architecture.svg    #    五层全景系统架构图
-│   ├── agent_workflow.svg         #    双重决策全链路 Agent 工作流图
-│   ├── PRD.md                     #    产品需求规格说明书
-│   ├── 系统架构与测试汇总.md       #    全景系统架构与用例汇总
-│   ├── TEST_CASES.md              #    23 个全链路实测测试用例
-│   ├── 评分.md                    #    比赛评分标准与自评报告
-│   ├── 加分.md                    #    交付清单加分项核验
-│   └── 支付.md                    #    支付宝 AI 付与双轨支付方案
+├── 面试.md / 解决.md / AI付支付宝对接.md  # 项目讲解手册、十大问题复盘、支付宝对接记录
+├── AGENTS.md                       # 协作约定与 Git 提交规范
+├── docs/                          # 📚 架构、规范与交付文档
+│   ├── doc/
+│   │   ├── system_architecture.svg #    五层全景系统架构图
+│   │   ├── agent_workflow.svg      #    双重决策全链路 Agent 工作流图
+│   │   ├── PRD.md                  #    产品需求规格说明书
+│   │   ├── 系统架构与测试汇总.md     #    全景系统架构与用例汇总
+│   │   ├── TEST_CASES.md           #    23 个全链路实测测试用例
+│   │   ├── 评分.md / 加分.md        #    评分标准与交付加分项核验
+│   │   ├── 支付.md / 竞品.md        #    双轨支付方案与竞品分析
+│   │   └── fx.md / fx1.md          #    功能清单与版本演进记录
+│   ├── ai/                         #    AI 能力说明与模型接入文档（ai/ai1/GMI/vedio）
+│   ├── prd/                        #    PRD、竞品分析与商业计划书
+│   ├── plan/                       #    商业化与支付方案设计
+│   ├── ppt/                        #    路演与答辩材料
+│   ├── ok/                         #    答辩、简历、复盘与完善记录
+│   ├── 技术开发规范.md               #    前端 / 后端 / Agent AI 分层规范与质量门禁
+│   ├── 后端.md                      #    后台数据契约与接口说明
+│   └── CURRENT_STATE.md            #    当前状态与已知问题清单
+├── .agents/rules/                  # 📏 工程红线与规范
+│   ├── Rules.md                    #    强制红线速查（前端 / 后端 / AI 分节编号）
+│   ├── 规范.md                      #    基于公开资料整理的编码与协作规范
+│   ├── 规范1.md                     #    通用大型企业技术开发规范（附参考资料清单）
+│   └── git-commit-workflow.md      #    提交与推送协作流程
+├── .rules/                         # 🔍 `pnpm lint` 引用的自定义质量规则
+│   ├── *.yml                       #    SelectItem / slot-nesting / toast-hook / 按钮交互 / Edge Function body 等
+│   ├── check.sh                    #    规则扫描入口
+│   └── testBuild.sh                #    构建自检脚本
 ├── supabase/
-│   ├── functions/                 # ⚡ 22 个 Deno 边缘函数微服务
+│   ├── functions/                  # ⚡ 22 个 Deno 边缘函数微服务
 │   │   ├── ai-assistant/          # 统一 AI 网关，内置 LLM 编排与模型路由
 │   │   ├── deepseek-v4-pro/       # DeepSeek V4 文本生成代理 (带 API Fallback)
 │   │   ├── glm-5-3-flash/         # GLM 5.3 Flash 极速文本代理
@@ -209,7 +240,7 @@ Shopro AI/
 │   │   ├── wenxin-text-generation/# 百度文心代理 Edge Function
 │   │   ├── setup-demo/            # 演示数据初始化种子数据
 │   │   └── _shared/               # 共享安全鉴权、密钥校验与错误处理中间件
-│   ├── migrations/                # 🗄️ 28 个 PostgreSQL 数据库迁移文件 (含 RLS、原子扣费 RPC、防薅锁、优惠券核销)
+│   ├── migrations/                # 🗄️ 29 个 PostgreSQL 迁移（RLS、原子扣费 RPC、防薅锁、兑换码核销、支付回调）
 │   └── schema.sql                 # 全量生产表结构、视图、触发器与 RPC 基线
 ```
 
@@ -313,14 +344,22 @@ Shopro AI/
 *   **团队协作**：支持主账号创建团队空间，通过邮箱发送邀请凭证，配置管理员或协作者角色，共享素材库与作品集。
 *   **OpenAPI 调试**：面向大商户或 ERP 系统，提供 `ak_...` 自定义 API 密钥生成、Revoke 控制，并附带在线交互式 API 沙箱调试器。
 
-### 9. 🏢 厂商运营后台管理系统 (Shopro-backend)
+### 9. 🎟️ 兑换码 / 卡券快速核销
+*   **入口**：顶栏积分区域「积分管理与充值」弹窗内的「兑换码 / 卡券快速核销」，输入卡密即可即时到账，无需跳转收银台。
+*   **服务端核销**：前端仅调用 `redeem_coupon(p_code)` 这一个 `SECURITY DEFINER` RPC（`src/api/credits.ts`），券码校验、每人限兑、过期判断、总量计数、积分入账与 `credit_logs` 流水写入全部在数据库事务内完成，客户端不持有任何写权限。
+*   **券库基线**：`00028_coupon_redeem.sql` 建立 `coupons` 表与核销函数（含 RLS 收紧与防重复核销）；`00029_coupons_50_credits.sql` 补充 3 张 50 面额券，与首张 `VIP888`（100 积分）共同构成演示券池。
+*   **当前可用券**：`VIP888` = 100 积分；`VIP50A` / `VIP50B` / `VIP50C` = 各 50 积分，每人限兑 1 次、不限总量、永久有效。
+*   **失败可读**：券码不存在、已兑换、已过期、已领完分别返回独立错误码，前端提示直接对应，不会静默失败。
+
+### 10. 🏢 厂商运营后台管理系统 (Shopro-backend)
 https://shopro-backend.netlify.app/（测试模拟版）
 *   **运营总览看板 (Dashboard)**：聚合展示 AI 履约成功率、订单净支付金额、服务影响指数及 ECharts 履约趋势与算力占比图表。
-*   **客户与算力积分管理 (Customers & Credits)**：查看商家用户使用全景，动态配置能力与并发配额，支持带审计追踪的人工算力加/扣调账。
-*   **AI 任务中心与 Attempt 日志下探 (AI Operations)**：工作流实时追踪，下探查看任务多次 retry 尝试记录 (Attempt)、第三方接口耗时与错误码，提供任务强切、失败重试及“故障失败算力退款”。
+*   **客户与算力积分管理 (Customers & Credits)**：用户列表/详情、能力与并发配额配置、积分台账（CreditLedger）逐笔下探，支持带审计追踪的人工调账与 REVERSAL 冲正流水。
+*   **AI 任务中心与 Attempt 日志下探 (AI Operations)**：工作流实时追踪，下探查看任务多次 retry 尝试记录 (Attempt)、第三方接口耗时与错误码，提供任务强切、失败重试、取消请求与“故障失败算力退款”。
 *   **智能内容风控治理 (Risk Governance)**：捕获涉黄、涉政、敏感违禁词事件，展示原始提示词与生成上下文证据链，支持处置（阻断/告警/忽略）与商家申诉二次复核。
-*   **订单、退款与套餐版本快照 (Billing & Packages)**：提供订单流水明细与异常订单“权益一键补发”，覆盖退款申请审批全生命周期，支持算力套餐版本快照创建。
-*   **系统运维与 MSW 零成本恢复 (System & Demo Reset)**：监控下游 AI 服务 health 状态，基于 RBAC 管理权限角色，支持在 Demo 模式下一键恢复 MSW 演示种子数据。
+*   **工单与商家支持 (Tickets)**：工单列表与详情、优先级与状态流转，关联对应用户与订单，形成“用户反馈 → 处理 → 结论”的闭环。
+*   **订单、退款与套餐版本快照 (Billing & Packages)**：订单列表/详情与服务端聚合 KPI，异常订单「权益一键补发」，退款申请创建、审批、驳回全生命周期，算力套餐版本快照创建。
+*   **系统运维与 MSW 零成本恢复 (System & Demo Reset)**：服务健康度、RBAC 角色与管理员、审批中心（积分调账审批 / 退款审批）、全局搜索与操作审计日志，支持演示种子数据一键恢复。
 *   **生产环境 Spring Boot 无缝对接**：前端 API 统一为 `/api/admin/**`，采用 `ApiResponse<T>` / `PageResult<T>` 统一契约。生产环境修改 `VITE_USE_MOCK=false` 即可秒级接轨真实后端。
 
 ---
@@ -346,7 +385,7 @@ cd Shopro && pnpm install
 # 2. 配置环境变量（Supabase 连接 + 各 AI 网关密钥）
 cp .env.example .env    # 填入 VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY 及各 VITE_*_API_KEY
 
-# 3. 开发调试（默认 http://127.0.0.1:8080）
+# 3. 开发调试（Vite 默认 http://localhost:5173）
 pnpm dev
 
 # 4. 生产构建与质量自检
@@ -361,7 +400,7 @@ pnpm lint               # 类型检查 + Biome + 自定义规则 + 构建自检
 supabase db push                          # 或手动执行 supabase/schema.sql 与 migrations/
                                           # ⚠️ 托管 Supabase 上 git push 不会自动应用迁移，需手动执行 SQL
 
-# 2. Edge Functions：部署 23 个微函数
+# 2. Edge Functions：部署 22 个微函数
 supabase functions deploy                 # 或按目录逐个 deploy（seedance / alipay-payment-order / …）
 
 # 3. 密钥注入：一律通过 secrets 注入，缺失时相关函数返回 503（无明文兜底）
@@ -382,7 +421,9 @@ npm i -g vercel && vercel --prod   # vercel.json 已配置 AI 网关代理重写
 ### ️ 厂商运营后台 & 🧪 MCP 服务
 
 ```bash
-cd backend && pnpm install && pnpm dev          # Vue 3 运营中台（含 MSW 演示模式）
+cd backend && pnpm install && pnpm dev          # Vue 3 运营中台，固定 http://localhost:5175（MSW 演示模式）
+                                                # 演示账号 admin@shopro.ai，密码任意（超级管理员全量权限）
+                                                # 纯前端 Mock，无需启动 Spring Boot；如需热更新请使用 dev 而非 preview
 
 cd mcp && pip install -r requirements_mcp.txt   # MCP 开放生态
 python mcp_shopro_server_stdio.py               # stdio 模式（本地智能体接入）
@@ -398,19 +439,50 @@ docker compose -f docker-compose.mcp.yml up     # 或容器化 HTTP/SSE 模式�
 
 | 业务模块 | HTTP 方法 | Endpoint 路径 | 所需权限 | 功能描述 |
 |---|---|---|---|---|
-| **认证授权** | `POST` | `/api/admin/auth/login` | 无 | 管理员登录，返回 JWT Token 与用户信息 |
-| **运营总览** | `GET` | `/api/admin/dashboard/overview` | `dashboard:view` | 获取看板核心指标与环比数据 |
-| | `GET` | `/api/admin/dashboard/fulfillment-trend` | `dashboard:view` | 获取履约成功率与趋势折线图数据 |
-| **客户与算力**| `GET` | `/api/admin/customers/users` | `customers:view` | 分页查询商家用户列表及算力使用情况 |
-| | `POST` | `/api/admin/credits/adjust` | `customers:view` | 人工加/扣算力积分，记录调账日志 |
-| **AI 任务中心**| `GET` | `/api/admin/ai/workflows` | `workflow:view` | 分页查询 AI 脚本/语音/视频工作流任务 |
-| | `GET` | `/api/admin/ai/workflows/:id` | `workflow:view` | 获取指定工作流详情与 Attempt 尝试日志 |
-| | `POST` | `/api/admin/ai/workflows/:id/refund` | `workflow:view` | 对因故障失败的任务执行算力人工退款 |
-| **风险与风控**| `GET` | `/api/admin/risk/events` | `risk:view` | 分页查询敏感词与内容风险事件及证据链 |
-| | `POST` | `/api/admin/risk/events/:id/decide` | `risk:view` | 提交风险处置决定（阻断/告警/忽略） |
-| **订单与计费**| `GET` | `/api/admin/billing/orders` | `billing:view` | 分页查询充值与套餐购买订单 |
-| | `POST` | `/api/admin/billing/orders/:id/reissue`| `billing:view` | 对异常订单手动执行“权益一键补发” |
-| **系统与运维**| `POST` | `/api/admin/system/demo-data/reset` | `system:view` | （Demo模式）一键恢复 MSW 演示种子数据 |
+| **认证授权** | `POST` | `/api/admin/auth/login` | 无 | 管理员登录，返回 JWT Token 与权限点集合 |
+| **运营总览** | `GET` | `/api/admin/dashboard/overview` | `dashboard:view` | 看板核心指标与环比数据 |
+| | `GET` | `/api/admin/dashboard/fulfillment-trend` | `dashboard:view` | 履约成功率与趋势折线图数据 |
+| **客户管理** | `GET` | `/api/admin/customers/users` | `customers:view` | 分页查询商家用户与算力使用情况 |
+| | `GET` | `/api/admin/customers/users/:id` | `customers:view` | 用户详情、套餐与能力配额 |
+| | `PATCH` | `/api/admin/customers/users/:id/capabilities` | `customers:manage` | 调整能力开关与并发配额 |
+| | `GET` | `/api/admin/customers/organizations` | `customers:view` | 分页查询团队 / 企业组织 |
+| **积分台账** | `GET` | `/api/admin/customers/users/:id/credit-ledger` | `customers:view` | 单用户积分流水逐笔下探 |
+| | `POST` | `/api/admin/customers/users/:id/credit-adjustments` | `credits:adjust` | 人工加/扣积分（走审批与审计） |
+| | `POST` | `/api/admin/customers/credit-ledger/:entryId/reversal` | `credits:adjust` | 对已落账流水做 REVERSAL 冲正 |
+| **AI 任务中心** | `GET` | `/api/admin/ai/workflows` | `workflow:view` | 分页查询 AI 脚本 / 语音 / 视频工作流 |
+| | `GET` | `/api/admin/ai/workflows/:id` | `workflow:view` | 工作流详情与 Attempt 尝试日志 |
+| | `GET` | `/api/admin/ai/jobs/:id` | `workflow:view` | 任务级详情与第三方耗时、错误码 |
+| | `POST` | `/api/admin/ai/jobs/:id/retry` | `workflow:manage` | 失败任务重试 |
+| | `POST` | `/api/admin/ai/jobs/:id/cancel-request` | `workflow:manage` | 发起任务取消请求 |
+| | `POST` | `/api/admin/ai/jobs/:id/manual-refund` | `workflow:manage` | 故障失败任务的算力人工退款 |
+| | `GET` | `/api/admin/ai/providers/health` | `workflow:view` | 下游 AI 服务健康度 |
+| **风险与风控** | `GET` | `/api/admin/risk/events` | `risk:view` | 分页查询敏感词与内容风险事件 |
+| | `GET` | `/api/admin/risk/events/:id` | `risk:view` | 风险事件证据链详情 |
+| | `POST` | `/api/admin/risk/events/:id/decisions` | `risk:manage` | 提交处置决定（阻断/告警/忽略） |
+| | `POST` | `/api/admin/risk/events/:id/appeals` | `risk:manage` | 商家申诉复核 |
+| **工单支持** | `GET` | `/api/admin/tickets` | `tickets:view` | 分页查询商家工单 |
+| | `POST` | `/api/admin/tickets` | `tickets:manage` | 创建工单 |
+| | `GET` | `/api/admin/tickets/:id` | `tickets:view` | 工单详情与往来记录 |
+| | `PATCH` | `/api/admin/tickets/:id` | `tickets:manage` | 更新工单状态/优先级/结论 |
+| **订单与计费** | `GET` | `/api/admin/billing/orders` | `billing:view` | 分页查询充值与套餐订单 |
+| | `GET` | `/api/admin/billing/summary` | `billing:view` | 服务端聚合订单 KPI（与列表同口径） |
+| | `GET` | `/api/admin/billing/orders/:id` | `billing:view` | 订单详情与套餐版本快照 |
+| | `POST` | `/api/admin/billing/orders/:id/regrant-entitlement` | `billing:manage` | 异常订单权益一键补发 |
+| | `GET` | `/api/admin/billing/refunds` | `billing:view` | 分页查询退款申请 |
+| | `POST` | `/api/admin/billing/refunds` | `billing:manage` | 创建退款申请 |
+| | `POST` | `/api/admin/billing/refunds/:id/approve` | `billing:manage` | 退款审批通过 |
+| | `POST` | `/api/admin/billing/refunds/:id/reject` | `billing:manage` | 退款审批驳回 |
+| | `GET` | `/api/admin/billing/credit-ledger` | `billing:view` | 全站积分流水 |
+| | `GET/POST` | `/api/admin/billing/plans` | `billing:view` / `billing:manage` | 套餐查询与版本快照创建 |
+| **系统与运维** | `GET` | `/api/admin/system/health` | `system:view` | 平台服务健康度 |
+| | `GET` | `/api/admin/system/audit-logs` | `system:view` | 操作审计日志 |
+| | `GET` | `/api/admin/system/admins` / `roles` | `system:view` | 管理员与 RBAC 角色定义 |
+| | `GET` | `/api/admin/system/approvals` | `system:view` | 审批中心（积分调账 / 退款） |
+| | `POST` | `/api/admin/system/approvals/:id/approve` / `reject` | `system:manage` | 审批通过 / 驳回 |
+| | `GET` | `/api/admin/search` | 登录即可 | 全局搜索（用户 / 订单 / 任务 / 工单） |
+| | `POST` | `/api/admin/demo/reset` | `system:view` | （Demo 模式）恢复 MSW 演示种子数据 |
+
+> 权限点常量集中在 `backend/src/constants/permissions.ts`，状态机集中在 `statuses.ts`；接口统一返回 `ApiResponse<T>`，分页统一 `PageResult<T>`。
 
 ### 🌐`ai-assistant` — 统一 AI 网关
 
@@ -496,25 +568,25 @@ docker compose -f docker-compose.mcp.yml up     # 或容器化 HTTP/SSE 模式�
 ---
 ## 🏗️ 系统架构与测试汇总
 
-> 完整版见 [系统架构与测试汇总.md](./系统架构与测试汇总.md)
+> 完整版见 [系统架构与测试汇总.md](./docs/doc/系统架构与测试汇总.md)
 
 ### 系统架构图
 
-![Shopro AI 系统架构图](./doc/system_architecture.svg)
+![Shopro AI 系统架构图](./docs/doc/system_architecture.svg)
 
 **五层架构说明**：
 
 | 层级 | 名称 | 核心组成 |
 |---|---|---|
 | ① | 接入层（Web 前端） | **商家创作端**（React 18 + TS + Vite，43 页面模块，Radix UI / TailwindCSS / SSE 流式）；**厂商运营中台**（Vue 3 + Element Plus + Pinia，多租户、Attempt 追踪、故障退款、内容风控、积分调账）；**MCP 开放生态**（Python FastMCP，tools.json 封装 7 大工具，HTTP/SSE + stdio，Docker） |
-| ② | 网关与无服务器计算层 | Vercel Edge 代理重写（glm/siliconflow/tokendance/openai-next/dxkp）；FastAPI 代理（密钥隔离透传）；Supabase Edge Functions ×23（AI 编排 + 支付 + 短信）；RLS / JWT / 限流 / 验签 |
-| ③ | BaaS 核心层 | Auth/JWT；PostgreSQL + RLS（products/video_tasks/works/profiles/teams/api_keys，26 迁移，原子扣费 RPC + credit_logs）；pgvector 向量库（RAG/Few-shot）；Storage + CDN |
+| ② | 网关与无服务器计算层 | Vercel Edge 代理重写（glm/siliconflow/tokendance/openai-next/dxkp）；FastAPI 代理（密钥隔离透传）；Supabase Edge Functions ×22（AI 编排 + 支付 + 短信）；RLS / JWT / 限流 / 验签 |
+| ③ | BaaS 核心层 | Auth/JWT；PostgreSQL + RLS（products/video_tasks/works/profiles/teams/api_keys/coupons，29 迁移，原子扣费 RPC + credit_logs + 兑换码核销）；pgvector 向量库（RAG/Few-shot）；Storage + CDN |
 | ④ | AI 多模态模型服务层 | 文本：DeepSeek-V4-Flash + GLM-5.3-Flash；语音：CosyVoice2 + TeleSpeechASR；视频：Seedance 2.0；图像：Flux 1.1 Pro；备份：Kling/Sora/MiniMax（故障降级） |
 | ⑤ | 支付与数据生态层 | 支付宝 AI 付 + 微信 Webhook；选品引擎（FastData/EchoTik/Kalodata/TikMeta）；跨平台发布；ROI 预测/A/B 回流 |
 
 ### Agent 工作流程图
 
-![Shopro AI Agent 工作流图](./doc/agent_workflow.svg)
+![Shopro AI Agent 工作流图](./docs/doc/agent_workflow.svg)
 
 **主流程（7 大工具调用链 + 双重决策兜底）**：
 
@@ -594,7 +666,7 @@ docker compose -f docker-compose.mcp.yml up     # 或容器化 HTTP/SSE 模式�
 
 ###  项目总结
 
-Shopro AI 是一个**已完成商业闭环验证的全栈 AIGC 实战项目**：43 个页面的商家创作端与 Vue 运营中台双端并行，23 个 Edge Functions 承载真实 AI 编排与支付链路，积分体系从「注册赠分 → 前置拦截 → 原子扣费 → 失败退款 → 充值入账」全链路可审计，AI 能力全部为真实第三方模型调用（`scratch/` 16 个探针脚本可复验），并已部署于 <https://f.playe.top> 对外可用。
+Shopro AI 是一个**已完成商业闭环验证的全栈 AIGC 实战项目**：43 个页面的商家创作端与 Vue 运营中台双端并行，22 个 Edge Functions 承载真实 AI 编排与支付链路，积分体系从「注册赠分 → 前置拦截 → 原子扣费 → 失败退款 → 充值/兑换入账」全链路可审计，AI 能力全部为真实第三方模型调用（`scratch/` 16 个探针脚本可复验），并已部署于 <https://f.playe.top> 对外可用。
 
 **技术亮点**：
 - 🧠 CoT 四层营销脚本 + SSE 打字机流式 + pgvector RAG Few-shot 自进化

@@ -439,50 +439,55 @@ docker compose -f docker-compose.mcp.yml up     # 或容器化 HTTP/SSE 模式�
 
 | 业务模块 | HTTP 方法 | Endpoint 路径 | 所需权限 | 功能描述 |
 |---|---|---|---|---|
-| **认证授权** | `POST` | `/api/admin/auth/login` | 无 | 管理员登录，返回 JWT Token 与权限点集合 |
-| **运营总览** | `GET` | `/api/admin/dashboard/overview` | `dashboard:view` | 看板核心指标与环比数据 |
-| | `GET` | `/api/admin/dashboard/fulfillment-trend` | `dashboard:view` | 履约成功率与趋势折线图数据 |
+| **认证授权** | `POST` | `/api/admin/auth/login` | 无 | 管理员登录，返回 Token 与权限点集合 |
+| | `GET` | `/api/admin/auth/me` | 登录态 | 获取当前管理员信息 |
+| | `POST` | `/api/admin/auth/logout` | 登录态 | 退出登录 |
+| **运营总览** | `GET` | `/api/admin/dashboard` | `dashboard:view` | 看板核心指标、趋势与分布 |
+| | `GET` | `/api/admin/dashboard/todos` | `dashboard:view` | 待办事项（待审退款、待处理风控等） |
 | **客户管理** | `GET` | `/api/admin/customers/users` | `customers:view` | 分页查询商家用户与算力使用情况 |
 | | `GET` | `/api/admin/customers/users/:id` | `customers:view` | 用户详情、套餐与能力配额 |
-| | `PATCH` | `/api/admin/customers/users/:id/capabilities` | `customers:manage` | 调整能力开关与并发配额 |
+| | `PATCH` | `/api/admin/customers/users/:id/capabilities` | `customers:operate` | 调整能力开关与并发配额 |
 | | `GET` | `/api/admin/customers/organizations` | `customers:view` | 分页查询团队 / 企业组织 |
+| | `GET` | `/api/admin/customers/organizations/:id` | `customers:view` | 组织详情与成员 |
 | **积分台账** | `GET` | `/api/admin/customers/users/:id/credit-ledger` | `customers:view` | 单用户积分流水逐笔下探 |
-| | `POST` | `/api/admin/customers/users/:id/credit-adjustments` | `credits:adjust` | 人工加/扣积分（走审批与审计） |
-| | `POST` | `/api/admin/customers/credit-ledger/:entryId/reversal` | `credits:adjust` | 对已落账流水做 REVERSAL 冲正 |
+| | `POST` | `/api/admin/customers/users/:id/credit-adjustments` | `customers:operate` | 人工加/扣积分（登记审批与审计） |
+| | `POST` | `/api/admin/customers/credit-ledger/:entryId/reversal` | `customers:operate` | 对已落账流水做 REVERSAL 冲正 |
 | **AI 任务中心** | `GET` | `/api/admin/ai/workflows` | `workflow:view` | 分页查询 AI 脚本 / 语音 / 视频工作流 |
 | | `GET` | `/api/admin/ai/workflows/:id` | `workflow:view` | 工作流详情与 Attempt 尝试日志 |
 | | `GET` | `/api/admin/ai/jobs/:id` | `workflow:view` | 任务级详情与第三方耗时、错误码 |
-| | `POST` | `/api/admin/ai/jobs/:id/retry` | `workflow:manage` | 失败任务重试 |
-| | `POST` | `/api/admin/ai/jobs/:id/cancel-request` | `workflow:manage` | 发起任务取消请求 |
-| | `POST` | `/api/admin/ai/jobs/:id/manual-refund` | `workflow:manage` | 故障失败任务的算力人工退款 |
+| | `POST` | `/api/admin/ai/jobs/:id/retry` | `workflow:operate` | 失败任务重试 |
+| | `POST` | `/api/admin/ai/jobs/:id/cancel-request` | `workflow:operate` | 发起任务取消请求 |
+| | `POST` | `/api/admin/ai/jobs/:id/manual-refund` | `workflow:operate` | 故障失败任务的算力人工退款 |
 | | `GET` | `/api/admin/ai/providers/health` | `workflow:view` | 下游 AI 服务健康度 |
 | **风险与风控** | `GET` | `/api/admin/risk/events` | `risk:view` | 分页查询敏感词与内容风险事件 |
 | | `GET` | `/api/admin/risk/events/:id` | `risk:view` | 风险事件证据链详情 |
-| | `POST` | `/api/admin/risk/events/:id/decisions` | `risk:manage` | 提交处置决定（阻断/告警/忽略） |
-| | `POST` | `/api/admin/risk/events/:id/appeals` | `risk:manage` | 商家申诉复核 |
-| **工单支持** | `GET` | `/api/admin/tickets` | `tickets:view` | 分页查询商家工单 |
-| | `POST` | `/api/admin/tickets` | `tickets:manage` | 创建工单 |
-| | `GET` | `/api/admin/tickets/:id` | `tickets:view` | 工单详情与往来记录 |
-| | `PATCH` | `/api/admin/tickets/:id` | `tickets:manage` | 更新工单状态/优先级/结论 |
+| | `POST` | `/api/admin/risk/events/:id/decisions` | `risk:decide` | 提交处置决定（阻断/告警/忽略） |
+| | `POST` | `/api/admin/risk/events/:id/appeals` | `risk:decide` | 商家申诉复核 |
+| **工单支持** | `GET` | `/api/admin/tickets` | `customers:view` | 分页查询商家工单 |
+| | `POST` | `/api/admin/tickets` | `customers:operate` | 创建工单 |
+| | `GET` | `/api/admin/tickets/:id` | `customers:view` | 工单详情与往来记录 |
+| | `PATCH` | `/api/admin/tickets/:id` | `customers:operate` | 更新工单状态/优先级/结论 |
 | **订单与计费** | `GET` | `/api/admin/billing/orders` | `billing:view` | 分页查询充值与套餐订单 |
 | | `GET` | `/api/admin/billing/summary` | `billing:view` | 服务端聚合订单 KPI（与列表同口径） |
 | | `GET` | `/api/admin/billing/orders/:id` | `billing:view` | 订单详情与套餐版本快照 |
-| | `POST` | `/api/admin/billing/orders/:id/regrant-entitlement` | `billing:manage` | 异常订单权益一键补发 |
+| | `POST` | `/api/admin/billing/orders/:id/regrant-entitlement` | `billing:entitlement:grant` | 异常订单权益一键补发 |
 | | `GET` | `/api/admin/billing/refunds` | `billing:view` | 分页查询退款申请 |
-| | `POST` | `/api/admin/billing/refunds` | `billing:manage` | 创建退款申请 |
-| | `POST` | `/api/admin/billing/refunds/:id/approve` | `billing:manage` | 退款审批通过 |
-| | `POST` | `/api/admin/billing/refunds/:id/reject` | `billing:manage` | 退款审批驳回 |
+| | `POST` | `/api/admin/billing/refunds` | `billing:refund:create` | 创建退款申请 |
+| | `POST` | `/api/admin/billing/refunds/:id/approve` | `billing:refund:approve` | 退款审批通过 |
+| | `POST` | `/api/admin/billing/refunds/:id/reject` | `billing:refund:approve` | 退款审批驳回 |
 | | `GET` | `/api/admin/billing/credit-ledger` | `billing:view` | 全站积分流水 |
-| | `GET/POST` | `/api/admin/billing/plans` | `billing:view` / `billing:manage` | 套餐查询与版本快照创建 |
+| | `GET` | `/api/admin/billing/plans` | `billing:view` | 套餐版本快照列表 |
+| | `POST` | `/api/admin/billing/plans` | `billing:plan:manage` | 创建套餐版本快照 |
 | **系统与运维** | `GET` | `/api/admin/system/health` | `system:view` | 平台服务健康度 |
 | | `GET` | `/api/admin/system/audit-logs` | `system:view` | 操作审计日志 |
-| | `GET` | `/api/admin/system/admins` / `roles` | `system:view` | 管理员与 RBAC 角色定义 |
-| | `GET` | `/api/admin/system/approvals` | `system:view` | 审批中心（积分调账 / 退款） |
-| | `POST` | `/api/admin/system/approvals/:id/approve` / `reject` | `system:manage` | 审批通过 / 驳回 |
-| | `GET` | `/api/admin/search` | 登录即可 | 全局搜索（用户 / 订单 / 任务 / 工单） |
-| | `POST` | `/api/admin/demo/reset` | `system:view` | （Demo 模式）恢复 MSW 演示种子数据 |
+| | `GET` | `/api/admin/system/admins` | `system:view` | 管理员列表 |
+| | `GET` | `/api/admin/system/roles` | `system:view` | RBAC 角色与权限点定义 |
+| | `GET` | `/api/admin/system/approvals` | `system:approvals:view` | 审批中心（积分调账 / 退款） |
+| | `POST` | `/api/admin/system/approvals/:id/approve` / `reject` | `system:approvals:decide`（积分）/ `billing:refund:approve`（退款） | 审批通过 / 驳回 |
+| | `GET` | `/api/admin/search?q=` | `search:use` | 全局搜索（用户 / 订单 / 任务 / 工单） |
+| | `POST` | `/api/admin/demo/reset` | `system:demo:reset` | （Demo 模式）恢复 MSW 演示种子数据 |
 
-> 权限点常量集中在 `backend/src/constants/permissions.ts`，状态机集中在 `statuses.ts`；接口统一返回 `ApiResponse<T>`，分页统一 `PageResult<T>`。
+> 权限码单一来源：`backend/src/constants/permissions.ts`（17 个权限点 + `*` 通配）；状态机常量在 `backend/src/constants/statuses.ts`；接口统一返回 `ApiResponse<T>`，分页统一 `PageResult<T>`。
 
 ### 🌐`ai-assistant` — 统一 AI 网关
 

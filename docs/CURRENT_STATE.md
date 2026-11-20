@@ -8,15 +8,15 @@
 
 | 模块 | 文件数 / 规模 | 运行环境 / 框架 | 端口 / 协议 | 说明 |
 |---|---|---|---|---|
-| **商家端创作前端 (`src/`)** | 42 个页面，56 个组件 | React 18 + Vite + Tailwind CSS | `http://localhost:5173` | 电商 AIGC 脚本与视频创作工作台 |
-| **厂商中台运营管理 (`backend/`)** | 14 个业务页 + 1 个 403 页 | Vue 3 + Vite + Element Plus + Pinia | `http://localhost:5175` | 48 个标准 REST 端点，MSW 2.x 浏览器仿真 |
-| **Edge Functions (`supabase/functions/`)** | 17 个微服务函数 | Deno TypeScript | Supabase Edge Runtime | 统一 `_shared` 鉴权与 CORS 中间件 |
-| **数据库层 (`supabase/migrations/`)** | 24 个 SQL 迁移文件 | PostgreSQL 15 + Supabase | pg_graphql / PostgREST | RLS 行级权限 + 原子扣费 RPC + 权限收敛 |
+| **商家端创作前端 (`src/`)** | 43 个页面文件（40 业务页 + Index/NotFound/AlipayReturn），74 个组件（56 个 UI 原子组件 + 18 个业务组件） | React 18 + Vite + Tailwind CSS | `http://localhost:5173` | 电商 AIGC 脚本与视频创作工作台 |
+| **厂商中台运营管理 (`backend/`)** | 15 个视图（含 Login / Forbidden / System） | Vue 3 + Vite + Element Plus + Pinia | `http://localhost:5175` | 48 个标准 REST 端点，MSW 2.x 浏览器仿真 |
+| **Edge Functions (`supabase/functions/`)** | 22 个微服务函数 + 1 个 `_shared` 共享目录 | Deno TypeScript | Supabase Edge Runtime | 统一 `_shared` 鉴权与 CORS 中间件 |
+| **数据库层 (`supabase/migrations/`)** | 29 个 SQL 迁移文件 | PostgreSQL 15 + Supabase | pg_graphql / PostgREST | RLS 行级权限 + 原子扣费 RPC + 权限收敛 |
 | **MCP 工具服务 (`mcp/` + `api/`)** | 7 大核心多模态工具 | Python 3.10+ FastMCP / Starlette | Streamable HTTP (`127.0.0.1:8080`) | 强制 API Key 鉴权 + 启用 DNS 重绑定防护 |
 
 ---
 
-## 2. 17 个 Edge Functions 现状矩阵
+## 2. Edge Functions 现状矩阵（17 个核心函数，完整 22 个函数清单见 README）
 
 | # | 边缘函数名称 | 鉴权方式 | 状态 / 上游调用 | 降级处理 |
 |---|---|---|---|---|

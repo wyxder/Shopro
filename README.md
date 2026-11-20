@@ -16,6 +16,21 @@
 
 ---
 
+## 🧭 评委快速导航（5 分钟核验）
+
+| 顺序 | 材料 | 入口 | 说明 |
+|---|---|---|---|
+| 1 | 在线体验 | <https://f.playe.top> | 注册赠积分 → 商品解析 → 脚本 → 视频 → 扣费 |
+| 2 | 区域赛自评 | [区域赛评分.md](./区域赛评分.md) | 五维评分、证据台账、整改清单 |
+| 3 | 码道使用证据 | [docs/codearts/](./docs/codearts/README.md) | 全流程证据、Prompt 台账、排错记录、截图清单 |
+| 4 | 架构与测试 | [系统架构与测试汇总](./docs/doc/系统架构与测试汇总.md) | 五层架构图、Agent 工作流图、23 条用例 |
+| 5 | 华为云接入 | [华为云接入方案](./docs/华为云接入方案.md) | OBS / CodeArts Pipeline / CES 实施与验收 |
+| 6 | 演示兜底 | [演示与兜底方案](./docs/演示与兜底方案.md) | 8 分钟脚本与异常切换 |
+| 7 | 变更记录 | [CHANGELOG.md](./CHANGELOG.md) | 比赛周期关键新增与修复 |
+| 8 | 一键复现 | `pnpm install && pnpm dev`；`pnpm test` | 契约自检 9 项，零新增依赖 |
+
+---
+
 ## 💎 项目简介
 <img width="1280" height="705" alt="image" src="https://github.com/user-attachments/assets/8a2b2a47-b8a1-4b46-9a7a-efb9c1f16564" />
 <img width="1280" height="679" alt="image" src="https://github.com/user-attachments/assets/cf2db694-ed54-4606-b7ca-6ff22854d3fb" />
@@ -650,7 +665,7 @@ docker compose -f docker-compose.mcp.yml up     # 或容器化 HTTP/SSE 模式�
 |---|---|---|---|
 | TC-D1 | 线上首页可访问性 | GET https://f.playe.top 返回 200，标题正常渲染 | ✅ |
 | TC-D2 | AI 网关代理重写 | glm/siliconflow/tokendance/openai-next/dxkp 五组 rewrites 线上生效 | ✅ |
-| TC-D3 | 数据库迁移与 RLS | 26 个迁移 + schema.sql 链路完整；FOR ALL 策略陷阱已显式清理 | ✅ |
+| TC-D3 | 数据库迁移与 RLS | 29 个迁移 + schema.sql 链路完整；FOR ALL 策略陷阱已显式清理 | ✅ |
 | TC-D4 | 弹窗前台可见性 | 自定义模型弹窗 Portal 顶层化，动画冻结场景下仍可见 | ✅ |
 | TC-D5 | 移动端触屏交互 | 修复 3D 变换与 select-none 导致点击失效；底部 Tab + 抽屉全导航可用 | ✅ |
 | TC-D6 | 视频编辑器播放流畅度 | rAF + video 原生时钟驱动，60FPS 游标渲染，卡顿回归通过 | ✅ |
@@ -671,7 +686,7 @@ docker compose -f docker-compose.mcp.yml up     # 或容器化 HTTP/SSE 模式�
 
 ###  项目总结
 
-Shopro AI 是一个**已完成商业闭环验证的全栈 AIGC 实战项目**：43 个页面的商家创作端与 Vue 运营中台双端并行，22 个 Edge Functions 承载真实 AI 编排与支付链路，积分体系从「注册赠分 → 前置拦截 → 原子扣费 → 失败退款 → 充值/兑换入账」全链路可审计，AI 能力全部为真实第三方模型调用（`scratch/` 16 个探针脚本可复验），并已部署于 <https://f.playe.top> 对外可用。
+Shopro AI 是一个**已完成商业闭环验证的全栈 AIGC 实战项目**：43 个页面的商家创作端与 Vue 运营中台双端并行，22 个 Edge Functions 承载真实 AI 编排与支付链路，积分体系从「注册赠分 → 前置拦截 → 原子扣费 → 失败退款 → 充值/兑换入账」全链路可审计，AI 能力全部为真实第三方模型调用（`scratch/` 17 个探针脚本可复验），并已部署于 <https://f.playe.top> 对外可用。
 
 **技术亮点**：
 - 🧠 CoT 四层营销脚本 + SSE 打字机流式 + pgvector RAG Few-shot 自进化

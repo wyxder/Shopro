@@ -31,6 +31,47 @@
 
 ---
 
+## 🤖 码道（CodeArts Agent）在项目开发中的应用
+
+本项目的主要开发与治理工作均在**码道（华为云 CodeArts Agent）**工程环境中完成。码道不只用于生成代码片段，而是贯穿环境搭建、功能生成、调试排错、文档产出与质量整改五个阶段；下列结论均可在仓库内找到对应文件、提交或可执行命令。
+
+### 一、五阶段应用
+
+| 阶段 | 码道承担的工作 | 代表产物 | 可核验方式 |
+|---|---|---|---|
+| 环境搭建 | 工程初始化、配置生成、规范落地 | `package.json`、`vite.config.ts`、`tsconfig.*`、`.rules/`、`.codeartsdoer/` | `pnpm install && pnpm dev` |
+| 功能生成 | 页面/组件/Edge Function/SQL 生成与契约补齐 | `src/pages`（43）、`src/components`（74）、`supabase/functions`（22 + `_shared`）、`migrations`（29） | 对照提交历史与页面清单 |
+| 调试排错 | 报错定位、探针脚本、修复与回归 | `scratch/`（17 个探针）、`docs/codearts/04-调试排错记录.md` | 按记录中的 commit 复现 |
+| 文档产出 | README、架构说明、测试用例、开发规范 | `README.md`、`docs/doc/TEST_CASES.md`、`docs/技术开发规范.md` | 按首次提交时间追溯 |
+| 质量整改 | 评分分析、密钥治理、口径统一、契约测试与 CI | `区域赛评分.md`、`b50de9c`、`35101de`、`scripts/contracts.mjs` | `pnpm test`（9 项契约自检） |
+
+### 二、协作方法（可复用）
+
+1. **契约先行**：先定 `ApiResponse<T>`、权限码、状态枚举与错误码，再让码道写实现，避免"生成得快但接不上"。
+2. **规则沉淀**：把每次纠偏写入 `AGENTS.md`、`.agents/rules/`、`.rules/*.yml`，让后续生成自动遵守，而不是重复口头约束。
+3. **验收闭环**：要求码道给出可执行命令与结果（`pnpm build`、`pnpm test`、探针脚本），不以"看起来正确"结案。
+4. **人工守红线**：资金扣减、退款、支付回调、RBAC、历史迁移五类改动必须人工评审并留日志。
+5. **证据随做随存**：任务结束即登记 Prompt、产物与人工修改点，避免赛后补证。
+
+### 三、真实性说明与不足
+
+- **可核验范围**：2026-06-15 起的代码、SQL、文档与 173 次提交均可追溯；2026-10-01 后 29 次提交覆盖支付、后台、兑换码与安全整改。
+- **历史边界**：2026-11-20 之前的逐次会话未留存导出记录，因此 `docs/codearts/05-文档生成记录.md` 中相关条目标注"待确认"，不做扩大归因；2026-11-20 起的评分分析、证据链、密钥治理、契约测试均有当次记录与提交。
+- **已知不足**：早期未建立会话台账，导致赛后证据补录成本高；该问题已通过 `docs/codearts/` 的登记规范纠正。
+- **不冒充真实能力**：模拟/降级分支在 `CURRENT_STATE.md` 中显式标记 `simulated` / `degraded`，演示与文档均不将其表述为真实调用。
+
+### 四、证据入口
+
+- 使用总览与核验路径：[docs/codearts/README.md](./docs/codearts/README.md)
+- 五阶段证据映射：[02-全流程证据.md](./docs/codearts/02-全流程证据.md)
+- Prompt 模板与台账：[03-prompt-台账.md](./docs/codearts/03-prompt-台账.md)
+- 模块参与地图：[06-AI参与模块地图.md](./docs/codearts/06-AI参与模块地图.md)
+- 截图清单与拍摄规范：[docs/codearts/screenshots/README.md](./docs/codearts/screenshots/README.md)
+
+> 说明：码道使用披露同时记录于 `mcp/AI_DISCLOSURE.md` 第 5 节；该文件第 1 节的 Antigravity 为历史阶段工具，两者并列记录、互不替代。
+
+---
+
 ## 💎 项目简介
 <img width="1280" height="705" alt="image" src="https://github.com/user-attachments/assets/8a2b2a47-b8a1-4b46-9a7a-efb9c1f16564" />
 <img width="1280" height="679" alt="image" src="https://github.com/user-attachments/assets/cf2db694-ed54-4606-b7ca-6ff22854d3fb" />

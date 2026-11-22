@@ -182,7 +182,7 @@ pnpm install
 pnpm dev
 ```
 
-启动成功后，浏览器访问 `http://localhost:5175`。
+启动成功后，浏览器访问 `http://localhost:5175/admin/`。
 * **演示账号**：`admin@shopro.ai`，密码可任意填写（默认具备超级管理员全量权限）。
 * **受限测试账号**：可在登录页切换或调试不同权限角色的展示与 403 拦截。
 

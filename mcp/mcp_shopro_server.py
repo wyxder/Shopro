@@ -26,12 +26,28 @@ DEEPSEEK_API_KEY = os.getenv("VITE_DEEPSEEK_API_KEY") or os.getenv("DEEPSEEK_API
 STEP_API_KEY = os.getenv("VITE_STEP_API_KEY") or os.getenv("STEP_API_KEY")
 CDANCE_API_KEY = os.getenv("API_KEY") or os.getenv("VITE_CDANCE_API_KEY") or os.getenv("VITE_VECTRUST_API_KEY") or os.getenv("VECTRUST_API_KEY")
 
+DXKP_URL = os.getenv("DXKP_URL")
+DXKP_GATEWAY_TOKEN = os.getenv("DXKP_GATEWAY_TOKEN") or os.getenv("MCP_API_KEY")
+
+
+def gateway_base_url(path: str) -> Optional[str]:
+    if not DXKP_URL:
+        return None
+    return f"{DXKP_URL.rstrip('/')}/{path.lstrip('/')}"
+
+
 # API Base URLs
-DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL") or "https://ai.dxkp.com/v1"
+DEEPSEEK_BASE_URL = gateway_base_url("v1") or os.getenv("DEEPSEEK_BASE_URL") or "https://ai.dxkp.com/v1"
 STEP_BASE_URL = "https://api.stepfun.com/step_plan/v1"
-CDANCE_BASE_URL = os.getenv("VITE_CDANCE_BASE_URL") or "https://ai.dxkp.com/v1"
+CDANCE_BASE_URL = gateway_base_url("v1") or os.getenv("VITE_CDANCE_BASE_URL") or "https://ai.dxkp.com/v1"
 
 MCP_SERVER_KEY = os.getenv("MCP_API_KEY") or os.getenv("MCP_AUTH_TOKEN")
+
+
+def bearer_token(api_key: Optional[str]) -> str:
+    if DXKP_URL and DXKP_GATEWAY_TOKEN:
+        return DXKP_GATEWAY_TOKEN
+    return api_key or ""
 
 # In-memory task store for Cdance async completions
 mcp_task_store = {}
@@ -98,7 +114,7 @@ async def extract_product_highlights(product_info: str) -> Dict[str, Any]:
                 f"{DEEPSEEK_BASE_URL}/chat/completions",
                 headers={
                     "Content-Type": "application/json",
-                    "Authorization": f"Bearer {DEEPSEEK_API_KEY}"
+                    "Authorization": f"Bearer {bearer_token(DEEPSEEK_API_KEY)}"
                 },
                 json={
                     "model": "DeepSeek-V4-Flash",
@@ -140,7 +156,7 @@ async def generate_marketing_script(
                 f"{DEEPSEEK_BASE_URL}/chat/completions",
                 headers={
                     "Content-Type": "application/json",
-                    "Authorization": f"Bearer {DEEPSEEK_API_KEY}"
+                    "Authorization": f"Bearer {bearer_token(DEEPSEEK_API_KEY)}"
                 },
                 json={
                     "model": "DeepSeek-V4-Flash",
@@ -175,7 +191,7 @@ async def translate_marketing_script(script: str, target_language: str) -> Dict[
                 f"{DEEPSEEK_BASE_URL}/chat/completions",
                 headers={
                     "Content-Type": "application/json",
-                    "Authorization": f"Bearer {DEEPSEEK_API_KEY}"
+                    "Authorization": f"Bearer {bearer_token(DEEPSEEK_API_KEY)}"
                 },
                 json={
                     "model": "DeepSeek-V4-Flash",
@@ -316,7 +332,7 @@ async def submit_video_generation(
                 f"{CDANCE_BASE_URL}/video/generations",
                 headers={
                     "Content-Type": "application/json",
-                    "Authorization": f"Bearer {CDANCE_API_KEY}"
+                    "Authorization": f"Bearer {bearer_token(CDANCE_API_KEY)}"
                 },
                 json=request_body
             )
@@ -348,7 +364,7 @@ async def query_video_status(request_id: str) -> Dict[str, Any]:
             response = await client.get(
                 f"{CDANCE_BASE_URL}/video/generations/{request_id}",
                 headers={
-                    "Authorization": f"Bearer {CDANCE_API_KEY}"
+                    "Authorization": f"Bearer {bearer_token(CDANCE_API_KEY)}"
                 }
             )
             response.raise_for_status()

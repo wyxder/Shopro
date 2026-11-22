@@ -1,11 +1,11 @@
-import {createRouter, createWebHistory} from 'vue-router'
-import {useAuthStore} from '@/stores/auth'
-import {ElMessage} from 'element-plus'
+import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { ElMessage } from 'element-plus'
 
 const router = createRouter({
-    history: createWebHistory(),
+    history: createWebHistory('/admin/'),
     routes: [
-        {path: '/login', component: () => import('@/views/LoginView.vue')},
+        { path: '/login', component: () => import('@/views/LoginView.vue') },
         {
             path: '/',
             component: () => import('@/layouts/AdminLayout.vue'),
@@ -14,78 +14,78 @@ const router = createRouter({
                 {
                     path: 'dashboard',
                     component: () => import('@/views/DashboardView.vue'),
-                    meta: {permission: 'dashboard:view'}
+                    meta: { permission: 'dashboard:view' }
                 },
                 {
                     path: 'users',
                     component: () => import('@/views/customers/UserListView.vue'),
-                    meta: {permission: 'customers:view'}
+                    meta: { permission: 'customers:view' }
                 },
                 {
                     path: 'customers/users/:id',
                     name: 'customer-user-detail',
                     component: () => import('@/views/customers/UserDetailView.vue'),
-                    meta: {permission: 'customers:view'}
+                    meta: { permission: 'customers:view' }
                 },
                 {
                     path: 'customers/users/:id/credits',
                     name: 'customer-credit-ledger',
                     component: () => import('@/views/customers/CreditLedgerView.vue'),
-                    meta: {permission: 'customers:view'}
+                    meta: { permission: 'customers:view' }
                 },
                 {
                     path: 'tickets',
                     component: () => import('@/views/customers/TicketListView.vue'),
-                    meta: {permission: 'customers:view'}
+                    meta: { permission: 'customers:view' }
                 },
                 {
                     path: 'tickets/:id',
                     name: 'ticket-detail',
                     component: () => import('@/views/customers/TicketDetailView.vue'),
-                    meta: {permission: 'customers:view'}
+                    meta: { permission: 'customers:view' }
                 },
                 {
                     path: 'ai-operations',
                     component: () => import('@/views/ai-operations/WorkflowListView.vue'),
-                    meta: {permission: 'workflow:view'}
+                    meta: { permission: 'workflow:view' }
                 },
                 {
                     path: 'ai-operations/workflows/:id',
                     name: 'workflow-detail',
                     component: () => import('@/views/ai-operations/WorkflowDetailView.vue'),
-                    meta: {permission: 'workflow:view'}
+                    meta: { permission: 'workflow:view' }
                 },
-                {path: 'jobs', redirect: '/ai-operations'},
+                { path: 'jobs', redirect: '/ai-operations' },
                 {
                     path: 'risk/events',
                     component: () => import('@/views/risk/RiskEventListView.vue'),
-                    meta: {permission: 'risk:view'}
+                    meta: { permission: 'risk:view' }
                 },
                 {
                     path: 'risk/events/:id',
                     name: 'risk-event-detail',
                     component: () => import('@/views/risk/RiskEventDetailView.vue'),
-                    meta: {permission: 'risk:view'}
+                    meta: { permission: 'risk:view' }
                 },
-                {path: 'contents', redirect: '/risk/events'},
+                { path: 'contents', redirect: '/risk/events' },
                 {
                     path: 'billing/orders',
                     component: () => import('@/views/billing/OrderListView.vue'),
-                    meta: {permission: 'billing:view'}
+                    meta: { permission: 'billing:view' }
                 },
                 {
                     path: 'billing/orders/:id',
                     name: 'billing-order-detail',
                     component: () => import('@/views/billing/OrderDetailView.vue'),
-                    meta: {permission: 'billing:view'}
+                    meta: { permission: 'billing:view' }
                 },
-                {path: 'orders', redirect: '/billing/orders'},
-                {path: 'system', component: () => import('@/views/SystemView.vue'), meta: {permission: 'system:view'}},
-                {path: '403', name: 'forbidden', component: () => import('@/views/ForbiddenView.vue')},
+                { path: 'orders', redirect: '/billing/orders' },
+                { path: 'system', component: () => import('@/views/SystemView.vue'), meta: { permission: 'system:view' } },
+                { path: '403', name: 'forbidden', component: () => import('@/views/ForbiddenView.vue') },
             ]
         },
-        {path: '/403', redirect: '/403'},
-        {path: '/:pathMatch(.*)*', redirect: '/dashboard'},
+        { path: '/403', redirect: '/403' },
+        { path: '/:pathMatch(.*)*', redirect: '/dashboard' },
     ],
 })
 

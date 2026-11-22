@@ -3,7 +3,13 @@ import urllib.request
 import urllib.error
 import os
 
-API_KEY = os.getenv("API_KEY") or os.getenv("VITE_CDANCE_API_KEY") or os.getenv("DEEPSEEK_API_KEY", "")
+API_KEY = (
+    os.getenv("API_KEY")
+    or os.getenv("VITE_CDANCE_API_KEY")
+    or os.getenv("DEEPSEEK_API_KEY")
+    or os.getenv("VITE_DEEPSEEK_API_KEY")
+    or ""
+)
 DXKP_BASE = "https://ai.dxkp.com"
 
 async def app(scope, receive, send):

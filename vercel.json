@@ -1,4 +1,48 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "web": {
+      "root": ".",
+      "framework": "vite",
+      "rewrites": [
+        {
+          "source": "/(.*)",
+          "destination": "/index.html"
+        }
+      ]
+    },
+    "mcp": {
+      "root": "mcp",
+      "entrypoint": "vercel_app:app",
+      "bindings": [
+        {
+          "type": "service",
+          "service": "dxkp",
+          "format": "url",
+          "env": "DXKP_URL"
+        }
+      ]
+    },
+    "dxkp": {
+      "root": "api",
+      "entrypoint": "dxkp:app"
+    },
+    "admin": {
+      "root": "backend",
+      "framework": "vite"
+    }
+  },
+  "headers": [
+    {
+      "source": "/admin/mockServiceWorker.js",
+      "headers": [
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        }
+      ]
+    }
+  ],
   "rewrites": [
     {
       "source": "/glm-api/(.*)",
@@ -17,20 +61,60 @@
       "destination": "https://api.openai-next.com/$1"
     },
     {
+      "source": "/mcp",
+      "destination": {
+        "service": "mcp"
+      }
+    },
+    {
+      "source": "/mcp/(.*)",
+      "destination": {
+        "service": "mcp"
+      }
+    },
+    {
+      "source": "/api/mcp",
+      "destination": {
+        "service": "mcp"
+      }
+    },
+    {
+      "source": "/api/mcp/(.*)",
+      "destination": {
+        "service": "mcp"
+      }
+    },
+    {
       "source": "/dxkp-api/(.*)",
-      "destination": "/api/dxkp"
+      "destination": {
+        "service": "dxkp"
+      }
     },
     {
       "source": "/api/dxkp/(.*)",
-      "destination": "/api/dxkp"
+      "destination": {
+        "service": "dxkp"
+      }
     },
     {
-      "source": "/mcp",
-      "destination": "/api/mcp"
+      "source": "/admin",
+      "destination": {
+        "service": "admin",
+        "path": "/"
+      }
+    },
+    {
+      "source": "/admin/(.*)",
+      "destination": {
+        "service": "admin",
+        "path": "/$1"
+      }
     },
     {
       "source": "/(.*)",
-      "destination": "/index.html"
+      "destination": {
+        "service": "web"
+      }
     }
   ]
 }

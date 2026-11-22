@@ -414,7 +414,7 @@ supabase secrets set GLM_API_KEY=xxx DEEPSEEK_API_KEY=yyy SILICONFLOW_API_KEY=zz
 ### 🌐 前端上线（Vercel）
 
 ```bash
-npm i -g vercel && vercel --prod   # vercel.json 已配置 AI 网关代理重写与 SPA fallback
+npm i -g vercel && vercel --prod   # vercel.json 已配置 Vercel Services（web/mcp/dxkp/admin）与 AI 网关代理重写
 ```
 
 > ✅ 线上实例：<https://f.playe.top>（`/glm-api`、`/siliconflow-api`、`/tokendance-api`、`/openai-next-api`、`/dxkp-api` 代理规则已生效）
@@ -422,7 +422,7 @@ npm i -g vercel && vercel --prod   # vercel.json 已配置 AI 网关代理重写
 ### ️ 厂商运营后台 & 🧪 MCP 服务
 
 ```bash
-cd backend && pnpm install && pnpm dev          # Vue 3 运营中台，固定 http://localhost:5175（MSW 演示模式）
+cd backend && pnpm install && pnpm dev          # Vue 3 运营中台，固定 http://localhost:5175/admin/（MSW 演示模式）
                                                 # 演示账号 admin@shopro.ai，密码任意（超级管理员全量权限）
                                                 # 纯前端 Mock，无需启动 Spring Boot；如需热更新请使用 dev 而非 preview
 

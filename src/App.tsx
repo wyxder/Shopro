@@ -15,50 +15,50 @@ import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // FP-01: 路由级懒加载
-const LoginPage       = lazy(() => import("@/pages/LoginPage"));
-const LandingPage     = lazy(() => import("@/pages/LandingPage"));
-const HomePage        = lazy(() => import("@/pages/HomePage"));
+const LoginPage = lazy(() => import("@/pages/LoginPage"));
+const LandingPage = lazy(() => import("@/pages/LandingPage"));
+const HomePage = lazy(() => import("@/pages/HomePage"));
 const VideoCreatePage = lazy(() => import("@/pages/VideoCreatePage"));
-const WorksPage       = lazy(() => import("@/pages/WorksPage"));
-const AnalyticsPage   = lazy(() => import("@/pages/AnalyticsPage"));
-const ProfilePage     = lazy(() => import("@/pages/ProfilePage"));
-const ProductsPage    = lazy(() => import("@/pages/ProductsPage"));
+const WorksPage = lazy(() => import("@/pages/WorksPage"));
+const AnalyticsPage = lazy(() => import("@/pages/AnalyticsPage"));
+const ProfilePage = lazy(() => import("@/pages/ProfilePage"));
+const ProductsPage = lazy(() => import("@/pages/ProductsPage"));
 const ProductSelectionPage = lazy(() => import("@/pages/ProductSelectionPage"));
-const AvatarsPage     = lazy(() => import("@/pages/AvatarsPage"));
-const TemplatesPage   = lazy(() => import("@/pages/TemplatesPage"));
-const CreditsPage     = lazy(() => import("@/pages/CreditsPage"));
-const AlipayReturnPage  = lazy(() => import("@/pages/AlipayReturnPage"));
-const ScriptPage      = lazy(() => import("@/pages/ScriptPage"));
-const StyleCopyPage   = lazy(() => import("@/pages/StyleCopyPage"));
-const KnowledgePage   = lazy(() => import("@/pages/KnowledgePage"));
-const CompetitorPage  = lazy(() => import("@/pages/CompetitorPage"));
-const LiveHighlightPage      = lazy(() => import("@/pages/LiveHighlightPage"));
-const PromptTemplatesPage    = lazy(() => import("@/pages/PromptTemplatesPage"));
-const OrderDetailPage        = lazy(() => import("@/pages/OrderDetailPage"));
-const VideoEditPage          = lazy(() => import("@/pages/VideoEditPage"));
-const ActivitiesPage         = lazy(() => import("@/pages/ActivitiesPage"));
-const InvitePage             = lazy(() => import("@/pages/InvitePage"));
+const AvatarsPage = lazy(() => import("@/pages/AvatarsPage"));
+const TemplatesPage = lazy(() => import("@/pages/TemplatesPage"));
+const CreditsPage = lazy(() => import("@/pages/CreditsPage"));
+const AlipayReturnPage = lazy(() => import("@/pages/AlipayReturnPage"));
+const ScriptPage = lazy(() => import("@/pages/ScriptPage"));
+const StyleCopyPage = lazy(() => import("@/pages/StyleCopyPage"));
+const KnowledgePage = lazy(() => import("@/pages/KnowledgePage"));
+const CompetitorPage = lazy(() => import("@/pages/CompetitorPage"));
+const LiveHighlightPage = lazy(() => import("@/pages/LiveHighlightPage"));
+const PromptTemplatesPage = lazy(() => import("@/pages/PromptTemplatesPage"));
+const OrderDetailPage = lazy(() => import("@/pages/OrderDetailPage"));
+const VideoEditPage = lazy(() => import("@/pages/VideoEditPage"));
+const ActivitiesPage = lazy(() => import("@/pages/ActivitiesPage"));
+const InvitePage = lazy(() => import("@/pages/InvitePage"));
 // Phase 2 新增页面
-const ABTestPage             = lazy(() => import("@/pages/ABTestPage"));
-const EmotionAnalysisPage    = lazy(() => import("@/pages/EmotionAnalysisPage"));
-const MultiLangPage          = lazy(() => import("@/pages/MultiLangPage"));
-const TaskQueuePage          = lazy(() => import("@/pages/TaskQueuePage"));
-const ExportFormatsPage      = lazy(() => import("@/pages/ExportFormatsPage"));
-const LLMCachePage           = lazy(() => import("@/pages/LLMCachePage"));
+const ABTestPage = lazy(() => import("@/pages/ABTestPage"));
+const EmotionAnalysisPage = lazy(() => import("@/pages/EmotionAnalysisPage"));
+const MultiLangPage = lazy(() => import("@/pages/MultiLangPage"));
+const TaskQueuePage = lazy(() => import("@/pages/TaskQueuePage"));
+const ExportFormatsPage = lazy(() => import("@/pages/ExportFormatsPage"));
+const LLMCachePage = lazy(() => import("@/pages/LLMCachePage"));
 // Phase 3 新增页面
-const TeamSpacePage          = lazy(() => import("@/pages/TeamSpacePage"));
-const OpenAPIPage            = lazy(() => import("@/pages/OpenAPIPage"));
-const DataFeedbackPage       = lazy(() => import("@/pages/DataFeedbackPage"));
-const TrendingPatternsPage   = lazy(() => import("@/pages/TrendingPatternsPage"));
-const PersonalizePage        = lazy(() => import("@/pages/PersonalizePage"));
-const BatchCreatePage        = lazy(() => import("@/pages/BatchCreatePage"));
-const AiToolboxPage          = lazy(() => import("@/pages/AiToolboxPage"));
-const NotificationsPage      = lazy(() => import("@/pages/NotificationsPage"));
-const MaterialsPage          = lazy(() => import("@/pages/MaterialsPage"));
-const PublishPage            = lazy(() => import("@/pages/PublishPage"));
-const DataDashboardPage      = lazy(() => import("@/pages/DataDashboardPage"));
+const TeamSpacePage = lazy(() => import("@/pages/TeamSpacePage"));
+const OpenAPIPage = lazy(() => import("@/pages/OpenAPIPage"));
+const DataFeedbackPage = lazy(() => import("@/pages/DataFeedbackPage"));
+const TrendingPatternsPage = lazy(() => import("@/pages/TrendingPatternsPage"));
+const PersonalizePage = lazy(() => import("@/pages/PersonalizePage"));
+const BatchCreatePage = lazy(() => import("@/pages/BatchCreatePage"));
+const AiToolboxPage = lazy(() => import("@/pages/AiToolboxPage"));
+const NotificationsPage = lazy(() => import("@/pages/NotificationsPage"));
+const MaterialsPage = lazy(() => import("@/pages/MaterialsPage"));
+const PublishPage = lazy(() => import("@/pages/PublishPage"));
+const DataDashboardPage = lazy(() => import("@/pages/DataDashboardPage"));
 
-import { supabase } from "@/db/supabase";
+import { supabase, isSupabaseConfigured } from "@/db/supabase";
 import PlanGate from "@/components/PlanGate";
 import ForbiddenPage from "@/components/ForbiddenPage";
 import { Send, CheckCircle2 } from "lucide-react";
@@ -252,18 +252,18 @@ function AppRoutes() {
                   <Route path="/export-formats" element={<ExportFormatsPage />} />
                   <Route path="/llm-cache" element={<LLMCachePage />} />
                   {/* 权限门禁与高级功能 */}
-                  <Route path="/team"              element={<TeamSpacePage />} />
-                  <Route path="/open-api"          element={<OpenAPIPage />} />
-                  <Route path="/data-feedback"     element={<DataFeedbackPage />} />
+                  <Route path="/team" element={<TeamSpacePage />} />
+                  <Route path="/open-api" element={<OpenAPIPage />} />
+                  <Route path="/data-feedback" element={<DataFeedbackPage />} />
                   <Route path="/trending-patterns" element={<TrendingPatternsPage />} />
-                  <Route path="/personalize"       element={<PersonalizePage />} />
-                  <Route path="/batch-create"      element={<PlanGate requiredPlan="pro" featureName="批量混剪与脚本矩阵"><BatchCreatePage /></PlanGate>} />
-                  <Route path="/ai-toolbox"         element={<AiToolboxPage />} />
-                  <Route path="/notifications"      element={<NotificationsPage />} />
-                  <Route path="/materials"          element={<MaterialsPage />} />
-                  <Route path="/publish"            element={<PublishPage />} />
-                  <Route path="/data-dashboard"     element={<DataDashboardPage />} />
-                  <Route path="/403"               element={<ForbiddenPage />} />
+                  <Route path="/personalize" element={<PersonalizePage />} />
+                  <Route path="/batch-create" element={<PlanGate requiredPlan="pro" featureName="批量混剪与脚本矩阵"><BatchCreatePage /></PlanGate>} />
+                  <Route path="/ai-toolbox" element={<AiToolboxPage />} />
+                  <Route path="/notifications" element={<NotificationsPage />} />
+                  <Route path="/materials" element={<MaterialsPage />} />
+                  <Route path="/publish" element={<PublishPage />} />
+                  <Route path="/data-dashboard" element={<DataDashboardPage />} />
+                  <Route path="/403" element={<ForbiddenPage />} />
                   <Route path="/login" element={<Navigate to="/" replace />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
@@ -276,18 +276,46 @@ function AppRoutes() {
   );
 }
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner richColors position="top-center" />
-      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  if (!isSupabaseConfigured) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-5 bg-background px-6 text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-destructive/20 bg-destructive/10">
+          <AlertTriangle className="h-7 w-7 text-destructive" />
+        </div>
+        <div className="max-w-lg space-y-2">
+          <h1 className="text-xl font-semibold text-foreground">部署配置缺失</h1>
+          <p className="text-sm text-muted-foreground">
+            未检测到 <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">VITE_SUPABASE_ANON_KEY</code>，应用无法连接 Supabase。
+          </p>
+          <p className="text-sm text-muted-foreground">
+            请在 Vercel 项目 Settings → Environment Variables 中添加
+            <code className="mx-1 rounded bg-muted px-1.5 py-0.5 font-mono text-xs">VITE_SUPABASE_URL</code>
+            与
+            <code className="mx-1 rounded bg-muted px-1.5 py-0.5 font-mono text-xs">VITE_SUPABASE_ANON_KEY</code>
+            ，勾选 Production 后重新部署。
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+          <RefreshCw className="mr-2 h-4 w-4" /> 重新加载
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner richColors position="top-center" />
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <AuthProvider>
+            <AppRoutes />
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

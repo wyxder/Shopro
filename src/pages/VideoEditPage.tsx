@@ -5240,9 +5240,9 @@ export default function VideoEditPage() {
               <div className="p-3 space-y-4">
                 {/* 顶部标题与轨道类型卡片 */}
                 <div className={`rounded-lg p-2.5 border flex items-center justify-between transition-colors ${selectedTrackObj.type === 'video' ? 'bg-indigo-950/40 border-indigo-500/40' :
-                    selectedTrackObj.type === 'audio' ? 'bg-emerald-950/40 border-emerald-500/40' :
-                      selectedTrackObj.type === 'text' ? 'bg-amber-950/40 border-amber-500/40' :
-                        'bg-purple-950/40 border-purple-500/40'
+                  selectedTrackObj.type === 'audio' ? 'bg-emerald-950/40 border-emerald-500/40' :
+                    selectedTrackObj.type === 'text' ? 'bg-amber-950/40 border-amber-500/40' :
+                      'bg-purple-950/40 border-purple-500/40'
                   }`}>
                   <div className="flex items-center gap-2 overflow-hidden">
                     {selectedTrackObj.type === 'video' ? <Film className="w-4 h-4 text-indigo-400 shrink-0" /> :
@@ -5260,9 +5260,9 @@ export default function VideoEditPage() {
                     </div>
                   </div>
                   <span className={`text-[10px] px-2 py-0.5 rounded font-medium border shrink-0 ${selectedTrackObj.type === 'video' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' :
-                      selectedTrackObj.type === 'audio' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
-                        selectedTrackObj.type === 'text' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
-                          'bg-purple-500/20 text-purple-300 border-purple-500/30'
+                    selectedTrackObj.type === 'audio' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
+                      selectedTrackObj.type === 'text' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
+                        'bg-purple-500/20 text-purple-300 border-purple-500/30'
                     }`}>
                     {selectedTrackObj.type === 'video' ? '主视频轨' :
                       selectedTrackObj.type === 'audio' ? '音频轨' :
@@ -5373,8 +5373,8 @@ export default function VideoEditPage() {
                             <button
                               key={f}
                               className={`h-7 text-[10px] rounded border transition-all ${isSel
-                                  ? 'bg-indigo-600 text-white border-indigo-500 font-medium shadow-sm'
-                                  : 'bg-zinc-850 border-zinc-700/80 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
+                                ? 'bg-indigo-600 text-white border-indigo-500 font-medium shadow-sm'
+                                : 'bg-zinc-850 border-zinc-700/80 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
                                 }`}
                               onClick={() => {
                                 setAppliedFilter(f);
@@ -5396,8 +5396,8 @@ export default function VideoEditPage() {
                         </p>
                         <button
                           className={`text-[9px] px-1.5 py-0.5 rounded border transition-colors ${selectedTrackObj.mute
-                              ? 'bg-rose-950/80 text-rose-300 border-rose-500/50'
-                              : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-zinc-200'
+                            ? 'bg-rose-950/80 text-rose-300 border-rose-500/50'
+                            : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-zinc-200'
                             }`}
                           onClick={() => {
                             const newMute = !selectedTrackObj.mute;
@@ -5444,8 +5444,8 @@ export default function VideoEditPage() {
                               variant={isSel ? "default" : "outline"}
                               size="sm"
                               className={`h-7 px-0 text-[10px] ${isSel
-                                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                                  : 'bg-zinc-850 border-zinc-700/80 text-zinc-400 hover:bg-zinc-800 hover:text-white'
+                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                : 'bg-zinc-850 border-zinc-700/80 text-zinc-400 hover:bg-zinc-800 hover:text-white'
                                 }`}
                               onClick={() => handleSpeedChange(numSpeed)}
                             >
@@ -5471,8 +5471,8 @@ export default function VideoEditPage() {
                         </p>
                         <button
                           className={`text-[9px] px-2 py-0.5 rounded border transition-colors flex items-center gap-1 ${selectedTrackObj.mute
-                              ? 'bg-rose-950/80 text-rose-300 border-rose-500/50'
-                              : 'bg-emerald-950/40 text-emerald-300 border-emerald-500/40 hover:bg-emerald-900/60'
+                            ? 'bg-rose-950/80 text-rose-300 border-rose-500/50'
+                            : 'bg-emerald-950/40 text-emerald-300 border-emerald-500/40 hover:bg-emerald-900/60'
                             }`}
                           onClick={() => {
                             const newMute = !selectedTrackObj.mute;
@@ -5573,8 +5573,8 @@ export default function VideoEditPage() {
                               <button
                                 key={d}
                                 className={`h-6 text-[10px] rounded border transition-all ${isSel
-                                    ? 'bg-emerald-600 text-white border-emerald-500 font-medium'
-                                    : 'bg-zinc-850 border-zinc-700/80 text-zinc-400 hover:text-zinc-200'
+                                  ? 'bg-emerald-600 text-white border-emerald-500 font-medium'
+                                  : 'bg-zinc-850 border-zinc-700/80 text-zinc-400 hover:text-zinc-200'
                                   }`}
                                 onClick={() => updateTrackItem(selectedTrackObj.id, { denoise: d })}
                               >
@@ -5594,8 +5594,8 @@ export default function VideoEditPage() {
                               <button
                                 key={r}
                                 className={`h-6 text-[10px] rounded border transition-all ${isSel
-                                    ? 'bg-emerald-600 text-white border-emerald-500 font-medium'
-                                    : 'bg-zinc-850 border-zinc-700/80 text-zinc-400 hover:text-zinc-200'
+                                  ? 'bg-emerald-600 text-white border-emerald-500 font-medium'
+                                  : 'bg-zinc-850 border-zinc-700/80 text-zinc-400 hover:text-zinc-200'
                                   }`}
                                 onClick={() => updateTrackItem(selectedTrackObj.id, { reverb: r })}
                               >
@@ -5624,8 +5624,8 @@ export default function VideoEditPage() {
                               variant={isSel ? "default" : "outline"}
                               size="sm"
                               className={`h-7 px-0 text-[10px] ${isSel
-                                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                                  : 'bg-zinc-850 border-zinc-700/80 text-zinc-400 hover:bg-zinc-800 hover:text-white'
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                                : 'bg-zinc-850 border-zinc-700/80 text-zinc-400 hover:bg-zinc-800 hover:text-white'
                                 }`}
                               onClick={() => handleSpeedChange(numSpeed)}
                             >
@@ -5695,8 +5695,8 @@ export default function VideoEditPage() {
                               <button
                                 key={font}
                                 className={`h-6 text-[10px] rounded border transition-all ${isSel
-                                    ? 'bg-amber-600 text-white border-amber-500 font-medium'
-                                    : 'bg-zinc-850 border-zinc-700/80 text-zinc-400 hover:text-zinc-200'
+                                  ? 'bg-amber-600 text-white border-amber-500 font-medium'
+                                  : 'bg-zinc-850 border-zinc-700/80 text-zinc-400 hover:text-zinc-200'
                                   }`}
                                 onClick={() => updateTrackItem(selectedTrackObj.id, { fontFamily: font })}
                               >
@@ -5830,8 +5830,8 @@ export default function VideoEditPage() {
                               <button
                                 key={b.name}
                                 className={`h-6 text-[10px] rounded border transition-all ${isSel
-                                    ? 'bg-amber-600 text-white border-amber-500 font-medium'
-                                    : 'bg-zinc-850 border-zinc-700/80 text-zinc-400 hover:text-zinc-200'
+                                  ? 'bg-amber-600 text-white border-amber-500 font-medium'
+                                  : 'bg-zinc-850 border-zinc-700/80 text-zinc-400 hover:text-zinc-200'
                                   }`}
                                 onClick={() => updateTrackItem(selectedTrackObj.id, { bgColor: b.bg })}
                               >
@@ -6012,8 +6012,8 @@ export default function VideoEditPage() {
               <div className="flex gap-1.5">
                 <div
                   className={`shrink-0 h-10 border rounded flex flex-col items-center justify-center cursor-pointer transition-all sticky left-0 z-10 select-none ${selectedTrackObj?.type === 'video'
-                      ? 'border-indigo-500 bg-indigo-950/70 text-indigo-300 ring-1 ring-indigo-500/50'
-                      : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+                    ? 'border-indigo-500 bg-indigo-950/70 text-indigo-300 ring-1 ring-indigo-500/50'
+                    : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
                     }`}
                   style={{ width: TRACK_LABEL_W }}
                   title="点击选中主轨道"
@@ -6050,8 +6050,8 @@ export default function VideoEditPage() {
               <div className="flex gap-1.5">
                 <div
                   className={`shrink-0 h-8 border rounded flex flex-col items-center justify-center cursor-pointer transition-all sticky left-0 z-10 select-none ${selectedTrackObj?.type === 'audio'
-                      ? 'border-emerald-500 bg-emerald-950/70 text-emerald-300 ring-1 ring-emerald-500/50'
-                      : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+                    ? 'border-emerald-500 bg-emerald-950/70 text-emerald-300 ring-1 ring-emerald-500/50'
+                    : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
                     }`}
                   style={{ width: TRACK_LABEL_W }}
                   title="点击选中音频轨道"
@@ -6088,8 +6088,8 @@ export default function VideoEditPage() {
               <div className="flex gap-1.5">
                 <div
                   className={`shrink-0 h-7 border rounded flex items-center justify-center cursor-pointer transition-all sticky left-0 z-10 select-none gap-1 ${selectedTrackObj?.type === 'text'
-                      ? 'border-amber-500 bg-amber-950/70 text-amber-300 ring-1 ring-amber-500/50'
-                      : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+                    ? 'border-amber-500 bg-amber-950/70 text-amber-300 ring-1 ring-amber-500/50'
+                    : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
                     }`}
                   style={{ width: TRACK_LABEL_W }}
                   title="点击选中文案轨道"
@@ -6126,8 +6126,8 @@ export default function VideoEditPage() {
               <div className="flex gap-1.5">
                 <div
                   className={`shrink-0 h-7 border rounded flex items-center justify-center cursor-pointer transition-all sticky left-0 z-10 select-none gap-1 ${selectedTrackObj?.type === 'image' || selectedTrackObj?.trackId === 'effects'
-                      ? 'border-purple-500 bg-purple-950/70 text-purple-300 ring-1 ring-purple-500/50'
-                      : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+                    ? 'border-purple-500 bg-purple-950/70 text-purple-300 ring-1 ring-purple-500/50'
+                    : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
                     }`}
                   style={{ width: TRACK_LABEL_W }}
                   title="点击选中特效轨道"

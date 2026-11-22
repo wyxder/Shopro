@@ -545,19 +545,19 @@ export default function HomePage() {
     // 2. 生成对应带货视频卡片数据并存入视频列表顶部
     const matchedVideoUrl =
       newProd.category === '服装配饰' ? '/Video/CreatOK_2.mp4' :
-      newProd.category === '美妆护肤' ? '/Video/CreatOK_4.mp4' :
-      newProd.category === '数码电器' ? '/Video/CreatOK_5.mp4' :
-      newProd.category === '食品饮料' ? '/Video/CreatOK_6.mp4' :
-      newProd.category === '家居用品' ? '/Video/CreatOK_7.mp4' :
-      '/Video/CreatOK_2.mp4';
+        newProd.category === '美妆护肤' ? '/Video/CreatOK_4.mp4' :
+          newProd.category === '数码电器' ? '/Video/CreatOK_5.mp4' :
+            newProd.category === '食品饮料' ? '/Video/CreatOK_6.mp4' :
+              newProd.category === '家居用品' ? '/Video/CreatOK_7.mp4' :
+                '/Video/CreatOK_2.mp4';
 
     const matchedCover =
       newProd.category === '服装配饰' ? '/Video/covers/CreatOK_2.webp' :
-      newProd.category === '美妆护肤' ? '/Video/covers/CreatOK_4.webp' :
-      newProd.category === '数码电器' ? '/Video/covers/CreatOK_5.webp' :
-      newProd.category === '食品饮料' ? '/Video/covers/CreatOK_6.webp' :
-      newProd.category === '家居用品' ? '/Video/covers/CreatOK_7.webp' :
-      '/Video/covers/CreatOK_2.webp';
+        newProd.category === '美妆护肤' ? '/Video/covers/CreatOK_4.webp' :
+          newProd.category === '数码电器' ? '/Video/covers/CreatOK_5.webp' :
+            newProd.category === '食品饮料' ? '/Video/covers/CreatOK_6.webp' :
+              newProd.category === '家居用品' ? '/Video/covers/CreatOK_7.webp' :
+                '/Video/covers/CreatOK_2.webp';
 
     const newVideoItem: CategoryVideoItem = {
       id: 'vid-new-' + Date.now(),
@@ -576,10 +576,10 @@ export default function HomePage() {
     // 3. 映射并注入主页灵感广场视频列表
     const inspireCat =
       newProd.category === '服装配饰' ? '服装' :
-      newProd.category === '美妆护肤' ? '美妆' :
-      newProd.category === '数码电器' ? '数码' :
-      newProd.category === '食品饮料' ? '食品' :
-      newProd.category === '家居用品' ? '家居' : '服装';
+        newProd.category === '美妆护肤' ? '美妆' :
+          newProd.category === '数码电器' ? '数码' :
+            newProd.category === '食品饮料' ? '食品' :
+              newProd.category === '家居用品' ? '家居' : '服装';
 
     const newInspireItem = {
       url: matchedVideoUrl,
@@ -1035,9 +1035,45 @@ export default function HomePage() {
         });
         if (error) console.error('补写作品存档失败:', error);
       }
+
+      // 同步写入素材库，确保「作品素材 → 素材库」也能直接预览与复用成片
+      const { data: existingMaterial } = await supabase
+        .from('materials')
+        .select('id')
+        .eq('user_id', ctx.userId)
+        .eq('url', videoUrl)
+        .maybeSingle();
+      if (!existingMaterial) {
+        const { error: materialError } = await supabase.from('materials').insert({
+          user_id: ctx.userId,
+          name: workTitle,
+          type: 'video',
+          url: videoUrl,
+          size: 0,
+          duration_sec: ctx.duration,
+        });
+        if (materialError) console.error('写入作品素材库失败:', materialError);
+      }
     } catch (err) {
       console.error('成片存档异常:', err);
     }
+
+    // 成片同步注入灵感广场，封面使用视频真实第一帧
+    setInspireVideos(prev => {
+      if (prev.some(item => item.url === videoUrl)) return prev;
+      return [{
+        url: videoUrl,
+        cover: coverFrame || ctx.firstFrame || '',
+        prompt: ctx.prompt || workTitle,
+        model: ctx.modelLabel || 'AI视频生成',
+        ratio: ctx.ratio || '16:9',
+        refImage: '无参考图',
+        firstLast: ctx.firstFrame ? '有首尾帧' : '无首尾帧',
+        category: '服装',
+        language: '中文',
+      }, ...prev];
+    });
+
     loadGeneratedVideos();
     // 通知同域已挂载的作品管理视图即时同步（免手动刷新/切换页面）
     window.dispatchEvent(new CustomEvent('shopro:works-updated'));
@@ -1601,7 +1637,7 @@ export default function HomePage() {
               prompt_text: prompt,
               progress: 5,
             }).select('id').maybeSingle();
-            
+
             if (projErr) {
               console.error("Failed to insert video project:", projErr);
             } else if (projData) {
@@ -1623,7 +1659,7 @@ export default function HomePage() {
 
         if (firstFrame) payload.first_frame = firstFrame;
         if (lastFrame) payload.last_frame = lastFrame;
-        
+
         const reference_images: string[] = [];
         if (refImage) reference_images.push(refImage);
         if (reference_images.length > 0) payload.reference_images = reference_images;
@@ -1851,7 +1887,7 @@ export default function HomePage() {
               prompt_text: prompt,
               progress: 5,
             }).select('id').maybeSingle();
-            
+
             if (projErr) {
               console.error("Failed to insert video project:", projErr);
             } else if (projData) {
@@ -1867,7 +1903,7 @@ export default function HomePage() {
           duration: activeDuration,
           aspect_ratio: activeRatio,
         };
-        
+
         if (refImage) {
           payload.image_list = [refImage];
         } else if (firstFrame) {
@@ -1879,7 +1915,7 @@ export default function HomePage() {
           const msg = await error?.context?.text();
           throw new Error(msg || error.message);
         }
-        
+
         const task_id = data?.task_id;
         if (!task_id) {
           if (dbProjectId) {
@@ -2005,7 +2041,8 @@ export default function HomePage() {
       className="min-h-screen w-full text-white overflow-x-hidden"
       style={{ background: 'linear-gradient(160deg,#0e0e12 0%,#14111a 40%,#0c0e14 100%)' }}
     >
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @keyframes textWaveRipple {
           0% { text-shadow: 0 0 0px rgba(236, 72, 153, 0); color: rgba(255, 255, 255, 0.8); }
           50% { text-shadow: 0 0 10px rgba(236, 72, 153, 0.8), 0 0 20px rgba(168, 85, 247, 0.5); color: #f472b6; }
@@ -2670,8 +2707,8 @@ export default function HomePage() {
                         className="flex items-center justify-center gap-1 px-2.5 py-1.5 md:px-4 md:py-2 rounded-xl text-[11px] sm:text-sm font-semibold transition-all duration-200 hover:scale-105 active:scale-95 shrink-0"
                         style={{ background: 'linear-gradient(135deg,#22c55e,#16a34a)', color: '#fff', boxShadow: '0 0 20px rgba(34,197,94,0.35)' }}>
                         <Play className="w-3.5 h-3.5 fill-current" />
-                        <span className="sm:hidden">生成</span>
-                        <span className="hidden sm:inline">AI视频生成</span>
+                        <span className="sm:hidden whitespace-nowrap">生成 · {VIDEO_GENERATE_COST}积分</span>
+                        <span className="hidden sm:inline whitespace-nowrap">AI视频生成 · {VIDEO_GENERATE_COST}积分</span>
                       </button>
                     </>
                   )}
@@ -3115,7 +3152,7 @@ export default function HomePage() {
                   onClick={() => navigate('/works')}
                   className="px-2.5 py-1 text-xs font-semibold rounded-md bg-primary/20 hover:bg-primary/30 text-primary transition-colors border border-primary/20 flex items-center gap-1"
                 >
-                  <Video className="w-3 h-3" /> 作品素材
+                  <Video className="w-3 h-3" /> 去作品素材查看
                 </button>
               </div>
               <button onClick={() => setResultVideo(null)} className="text-white/30 hover:text-white/70 transition-colors"><X className="w-4 h-4" /></button>
@@ -3207,22 +3244,22 @@ export default function HomePage() {
                       className={cn(
                         "flex items-center gap-1 px-2 md:px-3 py-1 md:py-1.5 rounded-lg text-[11px] md:text-xs transition-colors border",
                         (f.key === 'model' && filterModel !== '全部') ||
-                        (f.key === 'ratio' && filterRatio !== '全部') ||
-                        (f.key === 'refImage' && filterRefImage !== '全部') ||
-                        (f.key === 'firstLast' && filterFirstLast !== '全部') ||
-                        (f.key === 'category' && filterCategory !== '全部') ||
-                        (f.key === 'language' && filterLanguage !== '全部')
+                          (f.key === 'ratio' && filterRatio !== '全部') ||
+                          (f.key === 'refImage' && filterRefImage !== '全部') ||
+                          (f.key === 'firstLast' && filterFirstLast !== '全部') ||
+                          (f.key === 'category' && filterCategory !== '全部') ||
+                          (f.key === 'language' && filterLanguage !== '全部')
                           ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 font-medium"
                           : "text-white/60 hover:text-white/90 hover:bg-white/8 border-white/8"
                       )}
                     >
                       {f.label}：{
                         f.key === 'model' ? filterModel :
-                        f.key === 'ratio' ? filterRatio :
-                        f.key === 'refImage' ? filterRefImage :
-                        f.key === 'firstLast' ? filterFirstLast :
-                        f.key === 'category' ? filterCategory :
-                        filterLanguage
+                          f.key === 'ratio' ? filterRatio :
+                            f.key === 'refImage' ? filterRefImage :
+                              f.key === 'firstLast' ? filterFirstLast :
+                                f.key === 'category' ? filterCategory :
+                                  filterLanguage
                       }
                       <ChevronDown className="w-3 h-3" />
                     </button>
@@ -3243,11 +3280,11 @@ export default function HomePage() {
                             className={cn(
                               'w-full text-left px-3 py-1.5 text-xs hover:bg-white/10 transition-colors',
                               (f.key === 'model' && filterModel === opt) ||
-                              (f.key === 'ratio' && filterRatio === opt) ||
-                              (f.key === 'refImage' && filterRefImage === opt) ||
-                              (f.key === 'firstLast' && filterFirstLast === opt) ||
-                              (f.key === 'category' && filterCategory === opt) ||
-                              (f.key === 'language' && filterLanguage === opt)
+                                (f.key === 'ratio' && filterRatio === opt) ||
+                                (f.key === 'refImage' && filterRefImage === opt) ||
+                                (f.key === 'firstLast' && filterFirstLast === opt) ||
+                                (f.key === 'category' && filterCategory === opt) ||
+                                (f.key === 'language' && filterLanguage === opt)
                                 ? 'text-emerald-400 font-medium'
                                 : 'text-white/70'
                             )}
@@ -3281,7 +3318,7 @@ export default function HomePage() {
               {/* 瀑布流视频 4列 */}
               <div className="columns-2 md:columns-3 lg:columns-4 gap-3 space-y-3">
                 {filteredInspireVideos.map((video, i) => (
-                  <div key={i} 
+                  <div key={i}
                     className="break-inside-avoid rounded-xl overflow-hidden group cursor-pointer relative bg-black/20"
                     style={{ border: '1px solid rgba(255,255,255,0.07)' }}
                     onMouseEnter={(e) => {
@@ -3369,9 +3406,9 @@ export default function HomePage() {
           const isVertical = activePlayVideo.ratio === '9:16' || activePlayVideo.ratio === '3:4';
           const isSquare = activePlayVideo.ratio === '1:1';
           const aspectClass = activePlayVideo.ratio === '9:16' ? 'aspect-[9/16]' :
-                              activePlayVideo.ratio === '3:4' ? 'aspect-[3/4]' :
-                              activePlayVideo.ratio === '1:1' ? 'aspect-square' :
-                              'aspect-video';
+            activePlayVideo.ratio === '3:4' ? 'aspect-[3/4]' :
+              activePlayVideo.ratio === '1:1' ? 'aspect-square' :
+                'aspect-video';
           return (
             <Dialog open={!!activePlayVideo} onOpenChange={() => setActivePlayVideo(null)}>
               {/* 移动端：宽度不超过视口（留边距），sm 及以上恢复原尺寸 */}

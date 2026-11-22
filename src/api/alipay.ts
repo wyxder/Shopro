@@ -34,6 +34,56 @@ async function extractInvokeError(error: any): Promise<Error> {
   return new Error(error?.message || '支付服务请求失败');
 }
 
+function toAmountNumber(value: unknown): number | null {
+  if (value == null) return null;
+  const parsed = Number(String(value).replace(/[¥,\s]/g, ''));
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+/** 解析套餐 ID：优先使用明确 ID，否则按名称/价格/积分匹配 plans 表，避免套餐名称微小差异导致下单失败 */
+export async function resolvePlanId(input: {
+  planId?: string;
+  name?: string;
+  price?: number | string;
+  credits?: number | string;
+}): Promise<string> {
+  const directId = input.planId?.trim();
+  if (directId) return directId;
+
+  const { data, error } = await supabase
+    .from('plans')
+    .select('id, name, price, credits')
+    .order('level', { ascending: true });
+  if (error) throw new Error(`套餐列表读取失败：${error.message}`);
+
+  const plans = Array.isArray(data) ? data : [];
+  if (plans.length === 0) {
+    throw new Error('套餐列表为空，请先在 Supabase 初始化 plans 数据');
+  }
+
+  const name = input.name?.trim();
+  if (name) {
+    const exact = plans.find(p => String(p.name).trim() === name);
+    if (exact) return exact.id;
+    const partial = plans.find(p => String(p.name).includes(name) || name.includes(String(p.name).trim()));
+    if (partial) return partial.id;
+  }
+
+  const price = toAmountNumber(input.price);
+  if (price != null && price > 0) {
+    const byPrice = plans.find(p => toAmountNumber(p.price) === price);
+    if (byPrice) return byPrice.id;
+  }
+
+  const credits = toAmountNumber(input.credits);
+  if (credits != null) {
+    const byCredits = plans.find(p => toAmountNumber(p.credits) === credits && (toAmountNumber(p.price) ?? 0) > 0);
+    if (byCredits) return byCredits.id;
+  }
+
+  throw new Error('未找到对应套餐编号，请在套餐列表重新选择');
+}
+
 /** 统一下单：服务端创建订单并返回 alipay.trade.page.pay 表单 HTML */
 export async function createAlipayOrder(planId: string): Promise<AlipayOrderResult> {
   const { data, error } = await supabase.functions.invoke('alipay-payment-order', {
@@ -41,7 +91,20 @@ export async function createAlipayOrder(planId: string): Promise<AlipayOrderResu
   });
   if (error) throw await extractInvokeError(error);
   if (data?.code !== 0 || !data?.data) throw new Error(data?.message || '下单失败');
-  return data.data as AlipayOrderResult;
+
+  const payload = data.data as Record<string, unknown>;
+  const paymentHtml = payload.payment_html ?? payload.paymentHtml ?? payload.payment_url;
+  if (typeof paymentHtml !== 'string' || !paymentHtml.trim()) {
+    throw new Error('支付服务未返回支付宝支付表单，请检查 Edge Function 的 ALIPAY_* 配置');
+  }
+
+  return {
+    order_no: String(payload.order_no ?? payload.orderNo ?? ''),
+    order_id: String(payload.order_id ?? payload.orderId ?? ''),
+    payment_html: paymentHtml.trim(),
+    plan_name: String(payload.plan_name ?? payload.planName ?? ''),
+    amount: String(payload.amount ?? ''),
+  };
 }
 
 /**

@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import PaymentDialog from '@/components/common/PaymentDialog';
-import { createAlipayOrder, renderAndSubmitAlipayForm } from '@/api/alipay';
+import { createAlipayOrder, renderAndSubmitAlipayForm, resolvePlanId } from '@/api/alipay';
 import QRCodeDataUrl from '@/components/ui/qrcodedataurl';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
@@ -29,15 +29,15 @@ import InvitePage from '@/pages/InvitePage';
 
 // ── 常量 ──────────────────────────────────────────────────────────────────
 const TYPE_LABELS: Record<string, { label: string; cls: string }> = {
-  video_generate:   { label: '视频生成',   cls: 'bg-primary/10 text-primary' },
-  template_download:{ label: '模板下载',   cls: 'bg-info/10 text-info' },
-  material_upload:  { label: '素材上传',   cls: 'bg-warning/10 text-warning' },
-  purchase:         { label: '套餐购买',   cls: 'bg-success/10 text-success' },
-  plan_purchase:    { label: '套餐开通',   cls: 'bg-success/10 text-success' },
+  video_generate: { label: '视频生成', cls: 'bg-primary/10 text-primary' },
+  template_download: { label: '模板下载', cls: 'bg-info/10 text-info' },
+  material_upload: { label: '素材上传', cls: 'bg-warning/10 text-warning' },
+  purchase: { label: '套餐购买', cls: 'bg-success/10 text-success' },
+  plan_purchase: { label: '套餐开通', cls: 'bg-success/10 text-success' },
   booster_purchase: { label: '加油包购买', cls: 'bg-success/10 text-success' },
-  refund:           { label: '退款',       cls: 'bg-success/10 text-success' },
-  bonus:            { label: '赠送积分',   cls: 'bg-success/10 text-success' },
-  deduct:           { label: '扣除',       cls: 'bg-destructive/10 text-destructive' },
+  refund: { label: '退款', cls: 'bg-success/10 text-success' },
+  bonus: { label: '赠送积分', cls: 'bg-success/10 text-success' },
+  deduct: { label: '扣除', cls: 'bg-destructive/10 text-destructive' },
 };
 
 const PLAN_ICONS = [Zap, Star, ArrowUpCircle, Building2];
@@ -85,17 +85,17 @@ function PlanCard({ plan, isCurrent, onSelect, idx }: {
           </div>
         </div>
       </CardHeader>
-      
+
       <CardContent className="flex flex-col flex-1 pb-4">
         <div className="mb-6">
           <div className="flex items-end gap-1">
             {plan.price === 0
               ? <span className="text-4xl font-extrabold tracking-tight">免费</span>
               : <>
-                  <span className="text-2xl font-semibold text-muted-foreground pb-1">¥</span>
-                  <span className="text-4xl font-extrabold tracking-tight">{plan.price}</span>
-                  <span className="text-base font-normal text-muted-foreground pb-1">/月</span>
-                </>
+                <span className="text-2xl font-semibold text-muted-foreground pb-1">¥</span>
+                <span className="text-4xl font-extrabold tracking-tight">{plan.price}</span>
+                <span className="text-base font-normal text-muted-foreground pb-1">/月</span>
+              </>
             }
           </div>
           <p className="text-sm font-medium text-primary mt-2 flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> 每月 {plan.credits.toLocaleString()} 积分</p>
@@ -215,7 +215,7 @@ export default function CreditsPage() {
   // 支付相关
   const [payOpen, setPayOpen] = useState(false);
   const [payingObj, setPayingObj] = useState<Plan | null>(null);
-  const [payStatus, setPayStatus] = useState<'idle'|'creating'|'polling'|'success'|'error'>('idle');
+  const [payStatus, setPayStatus] = useState<'idle' | 'creating' | 'polling' | 'success' | 'error'>('idle');
   const [payUrl, setPayUrl] = useState('');
   const [payOrderNo, setPayOrderNo] = useState('');
 
@@ -310,7 +310,13 @@ export default function CreditsPage() {
     setAlipaySubmitting(true);
     const toastId = toast.loading(`正在创建支付宝订单（${plan.name}）…`);
     try {
-      const order = await createAlipayOrder(plan.id);
+      const planId = await resolvePlanId({
+        planId: plan.id,
+        name: plan.name,
+        price: plan.price,
+        credits: plan.credits,
+      });
+      const order = await createAlipayOrder(planId);
       toast.success(`订单 ${order.order_no} 已创建，正在安全跳转支付宝支付 ¥${order.amount}…`, { id: toastId });
       // 表单提交为整页跳转，支付完成后由 returnUrl 回跳 /alipay-return 查询最终结果
       renderAndSubmitAlipayForm(order.payment_html);
@@ -661,7 +667,7 @@ export default function CreditsPage() {
             <div className="text-2xl sm:text-3xl font-bold text-primary mb-0.5">
               <span className="text-base sm:text-lg">¥</span>{payingObj?.price}
             </div>
-            
+
             {payStatus === 'creating' ? (
               <div className="flex flex-col items-center justify-center p-6 gap-2 bg-muted/30 rounded-xl w-36 h-36 sm:w-44 sm:h-44 border border-border">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -686,8 +692,8 @@ export default function CreditsPage() {
                 <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleSelectPlan(payingObj!)}>重试</Button>
               </div>
             )}
-            
-            <p className="text-[11px] text-muted-foreground mt-2 text-center">支付成功后将自动到账<br/>如遇问题请联系客服微信：wyx200265</p>
+
+            <p className="text-[11px] text-muted-foreground mt-2 text-center">支付成功后将自动到账<br />如遇问题请联系客服微信：wyx200265</p>
           </div>
         </DialogContent>
       </Dialog>

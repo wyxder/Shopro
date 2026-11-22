@@ -114,6 +114,10 @@ Deno.serve(async (req) => {
       requestOptions.returnUrl = `${runtimeConfig.siteUrl.replace(/\/+$/, '')}/alipay-return?order_no=${encodeURIComponent(orderNo)}`;
     }
     const paymentHtml = sdk.pageExec('alipay.trade.page.pay', 'POST', requestOptions as never);
+    if (typeof paymentHtml !== 'string' || !paymentHtml.trim()) {
+      console.error('[alipay-payment-order] pageExec returned empty payment html');
+      return err('支付宝支付表单生成失败，请检查 ALIPAY_APP_ID / ALIPAY_PRIVATE_KEY 配置', corsHeaders, 500);
+    }
 
     return ok({
       order_no: order.order_no,

@@ -1,18 +1,18 @@
 import {
-  AlertCircle, AlignCenter, AlignLeft, AlignRight, ArrowRight, BadgeCheck, BarChart2, Bold, BookOpen, Captions, Check, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, Clock, Cloud, Copy, 
-  CreditCard, Download, ExternalLink, Eye, 
-  EyeOff, FileCheck2, 
+  AlertCircle, AlignCenter, AlignLeft, AlignRight, ArrowRight, BadgeCheck, BarChart2, Bold, BookOpen, Captions, Check, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, Clock, Cloud, Copy,
+  CreditCard, Download, ExternalLink, Eye,
+  EyeOff, FileCheck2,
   Film, Flame, FlipHorizontal, FlipVertical,
-  FolderOpen, 
+  FolderOpen,
   Grid3x3, GripVertical, Heart, ImageIcon, Info, Italic,
-  Layers, List, Loader2, Lock, Maximize, 
-  Mic, Minimize, Move, Music, Music2, Package, Palette, Pause, 
+  Layers, List, Loader2, Lock, Maximize,
+  Mic, Minimize, Move, Music, Music2, Package, Palette, Pause,
   Play, Plus, Redo,
-  RefreshCw, RotateCcw, RotateCw, Save, Scan, 
-  Scissors, 
-  Scissors as ScissorsIcon, Search, 
-  Settings2, ShoppingBag, ShoppingCart, SkipBack, SkipForward, SlidersHorizontal, Smile, Sparkles, Star, 
-  Tag, ToggleLeft, ToggleRight, Trash2, TrendingUp, Truck, Type, Undo, Upload, Volume2, VolumeX, Wand2, Waypoints, X, Zap, ZoomIn, ZoomOut 
+  RefreshCw, RotateCcw, RotateCw, Save, Scan,
+  Scissors,
+  Scissors as ScissorsIcon, Search,
+  Settings2, ShoppingBag, ShoppingCart, SkipBack, SkipForward, SlidersHorizontal, Smile, Sparkles, Star,
+  Tag, ToggleLeft, ToggleRight, Trash2, TrendingUp, Truck, Type, Undo, Upload, Volume2, VolumeX, Wand2, Waypoints, X, Zap, ZoomIn, ZoomOut
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -315,13 +315,13 @@ function EffectCard({ name, gradient, applied, onClick, onFavorite, cover }: {
     >
       {cover
         ? <img
-            src={cover}
-            alt={name}
-            className="absolute inset-0 w-full h-full object-cover"
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=200&h=150&fit=crop&auto=format';
-            }}
-          />
+          src={cover}
+          alt={name}
+          className="absolute inset-0 w-full h-full object-cover"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=200&h=150&fit=crop&auto=format';
+          }}
+        />
         : <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-80`} />
       }
       {/* 封面遮罩，增强文字可读性 */}
@@ -1192,8 +1192,8 @@ function TextSubtitlePanel({
                 <span className={cn(
                   "text-lg",
                   f.id === 'fs3' ? "bg-gradient-to-r from-red-400 via-amber-300 to-blue-400 text-transparent bg-clip-text font-black" :
-                  f.id === 'fs4' ? "text-cyan-300 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]" :
-                  "text-zinc-200"
+                    f.id === 'fs4' ? "text-cyan-300 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]" :
+                      "text-zinc-200"
                 )}>{f.preview}</span>
                 <span className="text-[10px] text-zinc-400">{f.name}</span>
               </button>
@@ -3795,7 +3795,7 @@ export default function VideoEditPage() {
             /* 元数据未就绪时忽略本次 seek */
           }
         }
-        if (el.paused) el.play().catch(() => {});
+        if (el.paused) el.play().catch(() => { });
       } else if (!el.paused) {
         el.pause();
       }
@@ -3812,9 +3812,7 @@ export default function VideoEditPage() {
       if (nodes) {
         applyAudioClipFxParams(clip, nodes);
       } else if (needsFx && audioBlobFailedRef.current.has(rawUrl) && !audioFxWarnedRef.current.has(rawUrl)) {
-        // 首次在该不可代理音源上开启声像/降噪/混响时，如实告知降级范围，避免“改了没反应”的困惑
         audioFxWarnedRef.current.add(rawUrl);
-        toast.info('⚠️ 该音频源不支持跨域特效处理：声像/降噪/混响无法生效，音量、淡入淡出、静音与变速真实生效');
       }
     });
   }, [audioMediaClips, tracks, currentTime, isPlaying]);
@@ -3822,7 +3820,7 @@ export default function VideoEditPage() {
   // 用户点击播放后恢复 AudioContext（浏览器自动播放策略要求手势后 resume）
   useEffect(() => {
     if (isPlaying) {
-      audioCtxRef.current?.resume().catch(() => {});
+      audioCtxRef.current?.resume().catch(() => { });
     }
   }, [isPlaying]);
 
@@ -3841,7 +3839,7 @@ export default function VideoEditPage() {
         }
       });
       Object.values(blobs).forEach(u => URL.revokeObjectURL(u));
-      audioCtxRef.current?.close().catch(() => {});
+      audioCtxRef.current?.close().catch(() => { });
     };
   }, []);
 
@@ -4073,7 +4071,7 @@ export default function VideoEditPage() {
     const junkIds = list.filter(m => isLegacyJunkMaterial(String(m.name ?? ''))).map(m => m.id);
     const cleanList = list.filter(m => !isLegacyJunkMaterial(String(m.name ?? '')));
     if (junkIds.length > 0) {
-      supabase.from('materials').delete().in('id', junkIds).then(() => {});
+      supabase.from('materials').delete().in('id', junkIds).then(() => { });
     }
     if (cleanList.length > 0) {
       setMaterials(cleanList);
@@ -4099,7 +4097,7 @@ export default function VideoEditPage() {
       try {
         const cover = await getVideoCoverImage(videoUrl);
         if (cover) return cover;
-      } catch {}
+      } catch { }
     }
     const firstMedia = trackList.find(t => (t.type === 'video' || t.type === 'image') && t.url);
     if (firstMedia?.url) {
@@ -4107,7 +4105,7 @@ export default function VideoEditPage() {
         try {
           const cover = await getVideoCoverImage(firstMedia.url);
           if (cover) return cover;
-        } catch {}
+        } catch { }
       } else {
         return firstMedia.url;
       }
@@ -4792,7 +4790,7 @@ export default function VideoEditPage() {
           payload: { project_id: currentId, title: finalTitle, duration, resolution: exportResolution },
           result: { video_url: targetVideoUrl, completed_at: new Date().toISOString() },
         });
-      } catch {}
+      } catch { }
 
       // 4. 派发全局自定义事件，使同页面或跨组件的 WorksPage 实时刷新
       window.dispatchEvent(new CustomEvent('shopro:works-updated'));
@@ -5241,36 +5239,34 @@ export default function VideoEditPage() {
             {selectedTrackObj ? (
               <div className="p-3 space-y-4">
                 {/* 顶部标题与轨道类型卡片 */}
-                <div className={`rounded-lg p-2.5 border flex items-center justify-between transition-colors ${
-                  selectedTrackObj.type === 'video' ? 'bg-indigo-950/40 border-indigo-500/40' :
-                  selectedTrackObj.type === 'audio' ? 'bg-emerald-950/40 border-emerald-500/40' :
-                  selectedTrackObj.type === 'text' ? 'bg-amber-950/40 border-amber-500/40' :
-                  'bg-purple-950/40 border-purple-500/40'
-                }`}>
+                <div className={`rounded-lg p-2.5 border flex items-center justify-between transition-colors ${selectedTrackObj.type === 'video' ? 'bg-indigo-950/40 border-indigo-500/40' :
+                    selectedTrackObj.type === 'audio' ? 'bg-emerald-950/40 border-emerald-500/40' :
+                      selectedTrackObj.type === 'text' ? 'bg-amber-950/40 border-amber-500/40' :
+                        'bg-purple-950/40 border-purple-500/40'
+                  }`}>
                   <div className="flex items-center gap-2 overflow-hidden">
                     {selectedTrackObj.type === 'video' ? <Film className="w-4 h-4 text-indigo-400 shrink-0" /> :
-                     selectedTrackObj.type === 'audio' ? <Music2 className="w-4 h-4 text-emerald-400 shrink-0" /> :
-                     selectedTrackObj.type === 'text' ? <Type className="w-4 h-4 text-amber-400 shrink-0" /> :
-                     <Sparkles className="w-4 h-4 text-purple-400 shrink-0" />}
+                      selectedTrackObj.type === 'audio' ? <Music2 className="w-4 h-4 text-emerald-400 shrink-0" /> :
+                        selectedTrackObj.type === 'text' ? <Type className="w-4 h-4 text-amber-400 shrink-0" /> :
+                          <Sparkles className="w-4 h-4 text-purple-400 shrink-0" />}
                     <div className="truncate">
                       <p className="text-xs font-semibold text-zinc-100 truncate">{selectedTrackObj.name}</p>
                       <p className="text-[10px] text-zinc-400">
                         {selectedTrackObj.type === 'video' ? `主视频 · ${selectedTrackObj.duration}秒` :
-                         selectedTrackObj.type === 'audio' ? `音频声轨 · ${selectedTrackObj.duration}秒` :
-                         selectedTrackObj.type === 'text' ? `文案字幕 · ${selectedTrackObj.duration}秒` :
-                         `特效画面 · ${selectedTrackObj.duration}秒`}
+                          selectedTrackObj.type === 'audio' ? `音频声轨 · ${selectedTrackObj.duration}秒` :
+                            selectedTrackObj.type === 'text' ? `文案字幕 · ${selectedTrackObj.duration}秒` :
+                              `特效画面 · ${selectedTrackObj.duration}秒`}
                       </p>
                     </div>
                   </div>
-                  <span className={`text-[10px] px-2 py-0.5 rounded font-medium border shrink-0 ${
-                    selectedTrackObj.type === 'video' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' :
-                    selectedTrackObj.type === 'audio' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
-                    selectedTrackObj.type === 'text' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
-                    'bg-purple-500/20 text-purple-300 border-purple-500/30'
-                  }`}>
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-medium border shrink-0 ${selectedTrackObj.type === 'video' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' :
+                      selectedTrackObj.type === 'audio' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
+                        selectedTrackObj.type === 'text' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
+                          'bg-purple-500/20 text-purple-300 border-purple-500/30'
+                    }`}>
                     {selectedTrackObj.type === 'video' ? '主视频轨' :
-                     selectedTrackObj.type === 'audio' ? '音频轨' :
-                     selectedTrackObj.type === 'text' ? '文案轨' : '特效轨'}
+                      selectedTrackObj.type === 'audio' ? '音频轨' :
+                        selectedTrackObj.type === 'text' ? '文案轨' : '特效轨'}
                   </span>
                 </div>
 
@@ -5376,11 +5372,10 @@ export default function VideoEditPage() {
                           return (
                             <button
                               key={f}
-                              className={`h-7 text-[10px] rounded border transition-all ${
-                                isSel
+                              className={`h-7 text-[10px] rounded border transition-all ${isSel
                                   ? 'bg-indigo-600 text-white border-indigo-500 font-medium shadow-sm'
                                   : 'bg-zinc-850 border-zinc-700/80 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
-                              }`}
+                                }`}
                               onClick={() => {
                                 setAppliedFilter(f);
                                 updateTrackItem(selectedTrackObj.id, { filter: f });
@@ -5400,11 +5395,10 @@ export default function VideoEditPage() {
                           <Volume2 className="w-3 h-3" />视频原声音量
                         </p>
                         <button
-                          className={`text-[9px] px-1.5 py-0.5 rounded border transition-colors ${
-                            selectedTrackObj.mute
+                          className={`text-[9px] px-1.5 py-0.5 rounded border transition-colors ${selectedTrackObj.mute
                               ? 'bg-rose-950/80 text-rose-300 border-rose-500/50'
                               : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-zinc-200'
-                          }`}
+                            }`}
                           onClick={() => {
                             const newMute = !selectedTrackObj.mute;
                             updateTrackItem(selectedTrackObj.id, { mute: newMute });
@@ -5449,11 +5443,10 @@ export default function VideoEditPage() {
                               key={numSpeed}
                               variant={isSel ? "default" : "outline"}
                               size="sm"
-                              className={`h-7 px-0 text-[10px] ${
-                                isSel
+                              className={`h-7 px-0 text-[10px] ${isSel
                                   ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
                                   : 'bg-zinc-850 border-zinc-700/80 text-zinc-400 hover:bg-zinc-800 hover:text-white'
-                              }`}
+                                }`}
                               onClick={() => handleSpeedChange(numSpeed)}
                             >
                               {numSpeed}x
@@ -5477,11 +5470,10 @@ export default function VideoEditPage() {
                           <Music2 className="w-3 h-3" />音频音量与声学控制
                         </p>
                         <button
-                          className={`text-[9px] px-2 py-0.5 rounded border transition-colors flex items-center gap-1 ${
-                            selectedTrackObj.mute
+                          className={`text-[9px] px-2 py-0.5 rounded border transition-colors flex items-center gap-1 ${selectedTrackObj.mute
                               ? 'bg-rose-950/80 text-rose-300 border-rose-500/50'
                               : 'bg-emerald-950/40 text-emerald-300 border-emerald-500/40 hover:bg-emerald-900/60'
-                          }`}
+                            }`}
                           onClick={() => {
                             const newMute = !selectedTrackObj.mute;
                             updateTrackItem(selectedTrackObj.id, { mute: newMute });
@@ -5580,11 +5572,10 @@ export default function VideoEditPage() {
                             return (
                               <button
                                 key={d}
-                                className={`h-6 text-[10px] rounded border transition-all ${
-                                  isSel
+                                className={`h-6 text-[10px] rounded border transition-all ${isSel
                                     ? 'bg-emerald-600 text-white border-emerald-500 font-medium'
                                     : 'bg-zinc-850 border-zinc-700/80 text-zinc-400 hover:text-zinc-200'
-                                }`}
+                                  }`}
                                 onClick={() => updateTrackItem(selectedTrackObj.id, { denoise: d })}
                               >
                                 {d}
@@ -5602,11 +5593,10 @@ export default function VideoEditPage() {
                             return (
                               <button
                                 key={r}
-                                className={`h-6 text-[10px] rounded border transition-all ${
-                                  isSel
+                                className={`h-6 text-[10px] rounded border transition-all ${isSel
                                     ? 'bg-emerald-600 text-white border-emerald-500 font-medium'
                                     : 'bg-zinc-850 border-zinc-700/80 text-zinc-400 hover:text-zinc-200'
-                                }`}
+                                  }`}
                                 onClick={() => updateTrackItem(selectedTrackObj.id, { reverb: r })}
                               >
                                 {r}
@@ -5633,11 +5623,10 @@ export default function VideoEditPage() {
                               key={numSpeed}
                               variant={isSel ? "default" : "outline"}
                               size="sm"
-                              className={`h-7 px-0 text-[10px] ${
-                                isSel
+                              className={`h-7 px-0 text-[10px] ${isSel
                                   ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
                                   : 'bg-zinc-850 border-zinc-700/80 text-zinc-400 hover:bg-zinc-800 hover:text-white'
-                              }`}
+                                }`}
                               onClick={() => handleSpeedChange(numSpeed)}
                             >
                               {numSpeed}x
@@ -5705,11 +5694,10 @@ export default function VideoEditPage() {
                             return (
                               <button
                                 key={font}
-                                className={`h-6 text-[10px] rounded border transition-all ${
-                                  isSel
+                                className={`h-6 text-[10px] rounded border transition-all ${isSel
                                     ? 'bg-amber-600 text-white border-amber-500 font-medium'
                                     : 'bg-zinc-850 border-zinc-700/80 text-zinc-400 hover:text-zinc-200'
-                                }`}
+                                  }`}
                                 onClick={() => updateTrackItem(selectedTrackObj.id, { fontFamily: font })}
                               >
                                 {font}
@@ -5841,11 +5829,10 @@ export default function VideoEditPage() {
                             return (
                               <button
                                 key={b.name}
-                                className={`h-6 text-[10px] rounded border transition-all ${
-                                  isSel
+                                className={`h-6 text-[10px] rounded border transition-all ${isSel
                                     ? 'bg-amber-600 text-white border-amber-500 font-medium'
                                     : 'bg-zinc-850 border-zinc-700/80 text-zinc-400 hover:text-zinc-200'
-                                }`}
+                                  }`}
                                 onClick={() => updateTrackItem(selectedTrackObj.id, { bgColor: b.bg })}
                               >
                                 {b.name}
@@ -6024,11 +6011,10 @@ export default function VideoEditPage() {
               {/* 主视频轨道 */}
               <div className="flex gap-1.5">
                 <div
-                  className={`shrink-0 h-10 border rounded flex flex-col items-center justify-center cursor-pointer transition-all sticky left-0 z-10 select-none ${
-                    selectedTrackObj?.type === 'video'
+                  className={`shrink-0 h-10 border rounded flex flex-col items-center justify-center cursor-pointer transition-all sticky left-0 z-10 select-none ${selectedTrackObj?.type === 'video'
                       ? 'border-indigo-500 bg-indigo-950/70 text-indigo-300 ring-1 ring-indigo-500/50'
                       : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
-                  }`}
+                    }`}
                   style={{ width: TRACK_LABEL_W }}
                   title="点击选中主轨道"
                   onClick={() => {
@@ -6063,11 +6049,10 @@ export default function VideoEditPage() {
               {/* 音频轨道 */}
               <div className="flex gap-1.5">
                 <div
-                  className={`shrink-0 h-8 border rounded flex flex-col items-center justify-center cursor-pointer transition-all sticky left-0 z-10 select-none ${
-                    selectedTrackObj?.type === 'audio'
+                  className={`shrink-0 h-8 border rounded flex flex-col items-center justify-center cursor-pointer transition-all sticky left-0 z-10 select-none ${selectedTrackObj?.type === 'audio'
                       ? 'border-emerald-500 bg-emerald-950/70 text-emerald-300 ring-1 ring-emerald-500/50'
                       : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
-                  }`}
+                    }`}
                   style={{ width: TRACK_LABEL_W }}
                   title="点击选中音频轨道"
                   onClick={() => {
@@ -6102,11 +6087,10 @@ export default function VideoEditPage() {
               {/* 字幕文案轨道 */}
               <div className="flex gap-1.5">
                 <div
-                  className={`shrink-0 h-7 border rounded flex items-center justify-center cursor-pointer transition-all sticky left-0 z-10 select-none gap-1 ${
-                    selectedTrackObj?.type === 'text'
+                  className={`shrink-0 h-7 border rounded flex items-center justify-center cursor-pointer transition-all sticky left-0 z-10 select-none gap-1 ${selectedTrackObj?.type === 'text'
                       ? 'border-amber-500 bg-amber-950/70 text-amber-300 ring-1 ring-amber-500/50'
                       : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
-                  }`}
+                    }`}
                   style={{ width: TRACK_LABEL_W }}
                   title="点击选中文案轨道"
                   onClick={() => {
@@ -6141,11 +6125,10 @@ export default function VideoEditPage() {
               {/* 特效轨道 */}
               <div className="flex gap-1.5">
                 <div
-                  className={`shrink-0 h-7 border rounded flex items-center justify-center cursor-pointer transition-all sticky left-0 z-10 select-none gap-1 ${
-                    selectedTrackObj?.type === 'image' || selectedTrackObj?.trackId === 'effects'
+                  className={`shrink-0 h-7 border rounded flex items-center justify-center cursor-pointer transition-all sticky left-0 z-10 select-none gap-1 ${selectedTrackObj?.type === 'image' || selectedTrackObj?.trackId === 'effects'
                       ? 'border-purple-500 bg-purple-950/70 text-purple-300 ring-1 ring-purple-500/50'
                       : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
-                  }`}
+                    }`}
                   style={{ width: TRACK_LABEL_W }}
                   title="点击选中特效轨道"
                   onClick={() => {
@@ -6235,14 +6218,14 @@ export default function VideoEditPage() {
               <div className={cn(
                 "w-9 h-9 rounded-xl flex items-center justify-center border",
                 exportStage === 'rendering' ? "bg-indigo-950/70 border-indigo-500/40 text-indigo-400" :
-                exportStage === 'completed' ? "bg-emerald-950/70 border-emerald-500/40 text-emerald-400" :
-                exportStage === 'failed' ? "bg-rose-950/70 border-rose-500/40 text-rose-400" :
-                "bg-zinc-800 border-zinc-700 text-zinc-300"
+                  exportStage === 'completed' ? "bg-emerald-950/70 border-emerald-500/40 text-emerald-400" :
+                    exportStage === 'failed' ? "bg-rose-950/70 border-rose-500/40 text-rose-400" :
+                      "bg-zinc-800 border-zinc-700 text-zinc-300"
               )}>
                 {exportStage === 'rendering' ? <Loader2 className="w-5 h-5 animate-spin" /> :
-                 exportStage === 'completed' ? <CheckCircle2 className="w-5 h-5" /> :
-                 exportStage === 'failed' ? <AlertCircle className="w-5 h-5" /> :
-                 <Download className="w-5 h-5 text-indigo-400" />}
+                  exportStage === 'completed' ? <CheckCircle2 className="w-5 h-5" /> :
+                    exportStage === 'failed' ? <AlertCircle className="w-5 h-5" /> :
+                      <Download className="w-5 h-5 text-indigo-400" />}
               </div>
               <div>
                 <DialogTitle className="text-zinc-100 text-base font-semibold">
@@ -6425,8 +6408,8 @@ export default function VideoEditPage() {
                         exportProgress >= step.target
                           ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-300 font-medium"
                           : exportProgress >= (step.target - 20)
-                          ? "bg-indigo-950/40 border-indigo-500/40 text-indigo-300 font-medium animate-pulse"
-                          : "bg-zinc-950/40 border-zinc-800/60 text-zinc-500"
+                            ? "bg-indigo-950/40 border-indigo-500/40 text-indigo-300 font-medium animate-pulse"
+                            : "bg-zinc-950/40 border-zinc-800/60 text-zinc-500"
                       )}
                     >
                       <div className="flex items-center justify-center gap-1 mb-0.5">

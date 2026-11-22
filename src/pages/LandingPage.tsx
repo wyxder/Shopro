@@ -10,7 +10,7 @@ import {
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/db/supabase';
-import { createAlipayOrder, renderAndSubmitAlipayForm } from '@/api/alipay';
+import { createAlipayOrder, renderAndSubmitAlipayForm, resolvePlanId } from '@/api/alipay';
 import PaymentDialog from '@/components/common/PaymentDialog';
 import LandingHero from '@/components/LandingHero';
 
@@ -884,16 +884,11 @@ export default function LandingPage() {
     const toastId = toast.loading(`正在为「${plan.name}」创建支付宝订单…`);
 
     try {
-      // 匹配数据库中的套餐 ID
-      const { data: dbPlan } = await supabase
-        .from('plans')
-        .select('id, name')
-        .ilike('name', `%${plan.name}%`)
-        .maybeSingle();
-
-      const planId = dbPlan?.id || (plan.name.includes('专业')
-        ? '5aa94301-26c7-4581-9b63-d1df52329621'
-        : 'd05ceb6e-df8a-4e2b-a01c-d784ab719f93');
+      // 按套餐名称/价格匹配数据库套餐 ID，不再依赖硬编码 UUID
+      const planId = await resolvePlanId({
+        name: plan.name,
+        price: plan.price,
+      });
 
       const order = await createAlipayOrder(planId);
       toast.success(`订单 ${order.order_no} 已创建，正在安全跳转支付宝支付 ¥${order.amount}…`, { id: toastId });
@@ -904,7 +899,7 @@ export default function LandingPage() {
         name: plan.name,
         price: plan.price.replace('¥', ''),
         credits: plan.name.includes('专业') ? '1,000' : '5,000',
-        planId: plan.name.includes('专业') ? '5aa94301-26c7-4581-9b63-d1df52329621' : 'd05ceb6e-df8a-4e2b-a01c-d784ab719f93',
+        planId: '',
       });
       setPayDialogOpen(true);
     } finally {
@@ -1011,7 +1006,7 @@ export default function LandingPage() {
                   <TiltCard className="h-full flex-1 flex flex-col self-stretch">
                     <div className="rounded-2xl p-5 h-full landing-card-dark transition-all duration-300 hover:shadow-2xl flex flex-col justify-between flex-1 self-stretch"
                       style={{ '--hover-glow': p.color } as React.CSSProperties}>
-                      
+
                       {/* 人物画像对应真实头像/形象图 */}
                       <div className="relative w-full h-44 rounded-xl overflow-hidden mb-4 border border-white/10 group bg-black/40 shrink-0">
                         <img
@@ -1082,7 +1077,7 @@ export default function LandingPage() {
                   <TiltCard className="h-full">
                     <div className="rounded-2xl p-3.5 sm:p-5 h-full group cursor-default landing-card-dark transition-all duration-300 hover:shadow-xl flex flex-col"
                       style={{ '--glow': f.glow } as React.CSSProperties}>
-                      
+
                       {/* 核心功能对应图片展示（高度按图片真实比例放大，确保封面完整显示） */}
                       <div className="relative w-full aspect-[1504/1046] rounded-xl overflow-hidden mb-3.5 border border-white/10 bg-black/40 group-hover:border-white/25 transition-colors">
                         <img

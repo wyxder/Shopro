@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { QrCode, CheckCircle2, Copy, MessageSquareCode, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { createAlipayOrder, renderAndSubmitAlipayForm } from '@/api/alipay';
+import { createAlipayOrder, renderAndSubmitAlipayForm, resolvePlanId } from '@/api/alipay';
 import { supabase } from '@/db/supabase';
 
 export interface PaymentDialogProps {
@@ -53,19 +53,12 @@ export default function PaymentDialog({
         return;
       }
 
-      let targetPlanId = planId;
-      if (!targetPlanId) {
-        const { data: matched } = await supabase
-          .from('plans')
-          .select('id')
-          .ilike('name', `%${pkgName}%`)
-          .maybeSingle();
-        targetPlanId = matched?.id;
-      }
-
-      if (!targetPlanId) {
-        throw new Error('未找到对应套餐编号，请在套餐列表重新选择');
-      }
+      const targetPlanId = await resolvePlanId({
+        planId,
+        name: pkgName,
+        price,
+        credits,
+      });
 
       const order = await createAlipayOrder(targetPlanId);
       toast.success(`订单创建成功，正在跳转支付宝…`, { id: toastId });
@@ -78,7 +71,7 @@ export default function PaymentDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if(!v) setPayStatus('scan'); }}>
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) setPayStatus('scan'); }}>
       <DialogContent className="w-[90vw] max-w-[410px] max-h-[88vh] p-0 overflow-hidden bg-[#14131d] border border-pink-500/30 text-white rounded-2xl sm:rounded-3xl shadow-2xl flex flex-col my-auto">
         <DialogHeader className="p-4 sm:p-5 pb-3 sm:pb-4 bg-gradient-to-r from-pink-950/50 via-purple-950/40 to-zinc-900 border-b border-white/10 text-center relative shrink-0">
           <div className="mx-auto w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-pink-500 to-rose-500 flex items-center justify-center shadow-lg shadow-pink-500/30 mb-1.5 sm:mb-2">

@@ -1,5 +1,5 @@
 // 支付宝 AI 网页应用收款 - 统一下单 Edge Function（alipay.trade.page.pay）
-// 前端 POST { plan_id }，服务端创建订单并返回支付页面 HTML 表单（pageExec 生成，禁止 exec）。
+// 前端 POST { plan_id }，服务端创建订单并返回支付宝支付跳转地址（pageExec GET）。
 // 密钥仅从 Edge Function Secrets 注入：ALIPAY_APP_ID / ALIPAY_PRIVATE_KEY(PKCS#1 原值) /
 // ALIPAY_PUBLIC_KEY / ALIPAY_GATEWAY / ALIPAY_SITE_URL / ALIPAY_NOTIFY_URL(可选)
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
       return err('订单创建失败', corsHeaders, 500);
     }
 
-    // 4. 生成支付页面表单 HTML（页面跳转类 API 必须使用 pageExec + POST）
+    // 4. 生成支付宝支付跳转地址（页面跳转类 API 使用 pageExec）
     const sdk = createAlipaySdk();
     const requestOptions: Record<string, unknown> = {
       bizContent: {
@@ -103,6 +103,8 @@ Deno.serve(async (req) => {
         total_amount: totalAmount,
         subject: sanitizeSubject(`Shopro-${plan.name}`),
         product_code: 'FAST_INSTANT_TRADE_PAY',
+        qr_pay_mode: '1',
+        qrcode_width: 200,
       },
     };
     // 本地验收无公网 HTTPS 通知地址时直接省略 notifyUrl，禁止传空串/占位值
@@ -113,7 +115,8 @@ Deno.serve(async (req) => {
     if (runtimeConfig.siteUrl) {
       requestOptions.returnUrl = `${runtimeConfig.siteUrl.replace(/\/+$/, '')}/alipay-return?order_no=${encodeURIComponent(orderNo)}`;
     }
-    const paymentHtml = sdk.pageExec('alipay.trade.page.pay', 'POST', requestOptions as never);
+    const paymentHtml = sdk.pageExec('alipay.trade.page.pay', 'GET', requestOptions as never);
+    console.log('[alipay-payment-order] payment target generated:', typeof paymentHtml, String(paymentHtml).length);
     if (typeof paymentHtml !== 'string' || !paymentHtml.trim()) {
       console.error('[alipay-payment-order] pageExec returned empty payment html');
       return err('支付宝支付表单生成失败，请检查 ALIPAY_APP_ID / ALIPAY_PRIVATE_KEY 配置', corsHeaders, 500);
@@ -123,6 +126,7 @@ Deno.serve(async (req) => {
       order_no: order.order_no,
       order_id: order.id,
       payment_html: paymentHtml,
+      payment_url: paymentHtml,
       plan_name: plan.name,
       amount: totalAmount,
     }, corsHeaders);

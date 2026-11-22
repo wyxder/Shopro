@@ -407,39 +407,6 @@ const features = [
   },
 ];
 
-// ── 用户画像数据（配对应封面图） ─────────────────────────────────────────
-const personas = [
-  {
-    emoji: '🛒',
-    role: '跨境电商卖家',
-    color: '#FF6B00',
-    tags: ['频繁上新', '多平台运营', '成本敏感'],
-    needs: '快速产出高质量带货视频，无需雇佣专业剪辑团队',
-    pain: '视频制作周期长、成本高，跟不上平台流量热点',
-    gain: '每月节省 ¥8,000+ 制作成本，出片速度提升 10x',
-    image: '/index/跨境电商.png',
-  },
-  {
-    emoji: '🎬',
-    role: 'MCN 内容机构',
-    color: '#00E599',
-    tags: ['多账号管理', '数据驱动', '追求爆款'],
-    needs: '批量生成高转化视频内容，统一管理多个账号',
-    pain: '创作团队产能有限，难以规模化复制爆款内容',
-    gain: '单人管理 10+ 账号，内容产出效率翻 5 倍',
-    image: '/index/mcn.png',
-  },
-  {
-    emoji: '✨',
-    role: 'OPC带货个体',
-    color: '#a78bfa',
-    tags: ['个人运营', '零剪辑基础', '学习爆款'],
-    needs: '低门槛制作专业视频，快速学习爆款创作技巧',
-    pain: '缺乏专业技能，无法低成本制作高质量内容',
-    gain: '从零基础到第一条破万播放，平均 3 天',
-    image: '/index/opc超级个体.png',
-  },
-];
 
 // ── 竞品对比六维矩阵深度调研数据 ─────────────────────────────────────────
 interface ComparisonRow {
@@ -893,8 +860,8 @@ export default function LandingPage() {
       const order = await createAlipayOrder(planId);
       toast.success(`订单 ${order.order_no} 已创建，正在安全跳转支付宝支付 ¥${order.amount}…`, { id: toastId });
       renderAndSubmitAlipayForm(order.payment_html);
-    } catch (e: any) {
-      toast.error(`支付宝下单未完成：${e?.message || '请重试'}，为您切换至扫码支付`, { id: toastId });
+    } catch {
+      toast.dismiss(toastId);
       setPayPkg({
         name: plan.name,
         price: plan.price.replace('¥', ''),
@@ -980,7 +947,7 @@ export default function LandingPage() {
 
 
       {/* ══════════════════════════════════════════════════════
-          宣传视频与用户画像
+          宣传视频
       ══════════════════════════════════════════════════════ */}
       <section id="功能" className="py-24 landing-section-dark">
         <div className="max-w-6xl mx-auto px-4 md:px-8">
@@ -988,72 +955,6 @@ export default function LandingPage() {
           {/* 宣传视频播放组件 */}
           <PromoVideoPlayer />
 
-          <SectionTitle
-            tag="用户画像"
-            title={<>谁在用 <span style={{ color: '#FF6B00' }}>电商AIGC</span>？</>}
-            sub="我们服务各类电商从业者，帮助他们以最低成本产出最高转化内容"
-          />
-          <div className="flex md:grid md:grid-cols-3 overflow-x-auto md:overflow-x-visible pb-6 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0 gap-6 snap-x snap-mandatory scrollbar-none items-stretch">
-            {personas.map((p, i) => {
-              const { ref, inView } = useInView(0.15);
-              return (
-                <div key={p.role} ref={ref}
-                  className={cn(
-                    'transition-all duration-700 w-[82vw] sm:w-[350px] md:w-auto shrink-0 snap-center flex flex-col self-stretch min-h-[510px] md:min-h-0',
-                    inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-                  )}
-                  style={{ transitionDelay: `${i * 120}ms` }}>
-                  <TiltCard className="h-full flex-1 flex flex-col self-stretch">
-                    <div className="rounded-2xl p-5 h-full landing-card-dark transition-all duration-300 hover:shadow-2xl flex flex-col justify-between flex-1 self-stretch"
-                      style={{ '--hover-glow': p.color } as React.CSSProperties}>
-
-                      {/* 人物画像对应真实头像/形象图 */}
-                      <div className="relative w-full h-44 rounded-xl overflow-hidden mb-4 border border-white/10 group bg-black/40 shrink-0">
-                        <img
-                          src={p.image}
-                          alt={p.role}
-                          className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#10131a] via-[#10131a]/30 to-transparent" />
-                        <div className="absolute bottom-2.5 left-3 flex items-center gap-2">
-                          <span className="text-2xl drop-shadow">{p.emoji}</span>
-                          <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-white border border-white/15">
-                            {p.role}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* 标签列表 */}
-                      <div className="flex flex-wrap items-center gap-1.5 mb-4 shrink-0 min-h-[30px]">
-                        {p.tags.map(t => (
-                          <span key={t} className="text-xs px-2 py-0.5 rounded-full"
-                            style={{ background: `${p.color}18`, color: p.color, border: `1px solid ${p.color}30` }}>
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-
-                      {/* 三联核心内容块（等高自适应） */}
-                      <div className="space-y-3 text-sm flex-1 flex flex-col justify-between">
-                        <div className="p-3 rounded-xl min-h-[70px] flex flex-col justify-center" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                          <p className="text-white/40 text-xs mb-1">核心需求</p>
-                          <p className="text-white/75 text-pretty leading-relaxed text-xs sm:text-sm">{p.needs}</p>
-                        </div>
-                        <div className="p-3 rounded-xl min-h-[70px] flex flex-col justify-center" style={{ background: 'rgba(255,60,60,0.05)', border: '1px solid rgba(255,60,60,0.1)' }}>
-                          <p className="text-red-400/60 text-xs mb-1">痛点</p>
-                          <p className="text-white/60 text-pretty leading-relaxed text-xs sm:text-sm">{p.pain}</p>
-                        </div>
-                        <div className="p-3 rounded-xl min-h-[70px] flex flex-col justify-center" style={{ background: `${p.color}08`, border: `1px solid ${p.color}20` }}>
-                          <p className="text-xs mb-1" style={{ color: `${p.color}99` }}>使用后收益</p>
-                          <p className="font-semibold text-pretty leading-relaxed text-xs sm:text-sm" style={{ color: p.color }}>{p.gain}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </TiltCard>
-                </div>
-              );
-            })}
-          </div>
         </div>
       </section>
 

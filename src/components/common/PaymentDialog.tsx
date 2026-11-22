@@ -63,8 +63,8 @@ export default function PaymentDialog({
       const order = await createAlipayOrder(targetPlanId);
       toast.success(`订单创建成功，正在跳转支付宝…`, { id: toastId });
       renderAndSubmitAlipayForm(order.payment_html);
-    } catch (e: any) {
-      toast.error(`支付宝拉起失败：${e?.message || '未知错误'}，可继续使用下方二维码扫码`, { id: toastId });
+    } catch {
+      toast.dismiss(toastId);
     } finally {
       setAlipayLoading(false);
     }
